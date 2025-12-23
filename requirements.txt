@@ -10,6 +10,7 @@ scipy==1.11.4
 scikit-learn==1.3.2
 xgboost==2.0.3
 joblib==1.3.2
+optuna==3.5.0
 
 # API Client
 cfbd==4.5.1

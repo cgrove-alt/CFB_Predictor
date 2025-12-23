@@ -61,9 +61,19 @@ def check_password():
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-SPREAD_ERROR_THRESHOLD = 3.0  # Only bet when predicted error > 3 points
+# V19 UPDATE: Stricter thresholds based on analysis
+# - Only HIGH/MEDIUM-HIGH bets are profitable (+55.7% and +18.4% ROI)
+# - MEDIUM/LOW bets drag down portfolio (-6.8% ROI for LOW)
+SPREAD_ERROR_THRESHOLD = 4.5  # V19: Increased from 3.0 to 4.5 for stricter filtering
 KELLY_FRACTION = 0.25
 VARIANCE_THRESHOLD = 7.0
+
+# V19: Game type filters - skip unprofitable game types
+# Based on analysis: Average vs Average games (Elo diff < 100) have only 55% accuracy
+SKIP_PICK_EM_GAMES = True         # |spread| < 3 - high variance, low edge
+SKIP_AVG_VS_AVG_GAMES = True      # |elo_diff| < 100 - main source of losses (51% of games)
+SKIP_EARLY_SEASON_GAMES = True    # week <= 2 - data staleness
+SHOW_PASS_RECOMMENDATIONS = True  # Show PASS for games that should be skipped
 
 # Safe features used by V16 model (NO LEAKAGE - 68 features)
 # V16 = V15 (58 features) + 10 uncertainty features learned from error analysis
@@ -901,16 +911,82 @@ def kelly_bet_size(spread_error, bankroll=1000, odds=-110,
 def get_confidence_tier(spread_error):
     """Get confidence tier based on spread error magnitude."""
     error_mag = abs(spread_error)
-    if error_mag >= 5.0:
+    # V19: Adjusted thresholds - be more conservative
+    if error_mag >= 6.0:
         return 'HIGH', 'confidence-high', '🔥'
-    elif error_mag >= 3.5:
+    elif error_mag >= 4.5:
         return 'MEDIUM-HIGH', 'confidence-medium-high', '✅'
-    elif error_mag >= 2.0:
+    elif error_mag >= 3.0:
         return 'MEDIUM', 'confidence-medium', '⚠️'
-    elif error_mag >= 1.0:
+    elif error_mag >= 1.5:
         return 'LOW', 'confidence-low', '⚡'
     else:
         return 'VERY LOW', 'confidence-very-low', '❄️'
+
+
+def classify_game_type(row, week=None):
+    """
+    V19: Classify game type to identify PASS recommendations.
+
+    Returns:
+        dict with game type flags and recommendation
+    """
+    elo_diff = abs(row.get('elo_diff', 0) if pd.notna(row.get('elo_diff')) else 0)
+    spread = abs(row.get('vegas_spread', 0) if pd.notna(row.get('vegas_spread')) else 0)
+    home_elo = row.get('home_pregame_elo', 1500) if pd.notna(row.get('home_pregame_elo')) else 1500
+    away_elo = row.get('away_pregame_elo', 1500) if pd.notna(row.get('away_pregame_elo')) else 1500
+
+    game_type = {
+        'is_pick_em': spread < 3,           # Pick-em games are hard to predict
+        'is_avg_vs_avg': elo_diff < 100,    # Average vs average - 55% accuracy only
+        'is_early_season': week is not None and week <= 2,  # Data staleness
+        'is_large_mismatch': elo_diff > 300,  # Blowout potential
+        'is_elite_matchup': home_elo > 1700 and away_elo > 1700,  # Top 25 vs Top 25
+    }
+
+    # Determine if this game should be PASSED
+    pass_reasons = []
+    if SKIP_PICK_EM_GAMES and game_type['is_pick_em']:
+        pass_reasons.append('pick-em')
+    if SKIP_AVG_VS_AVG_GAMES and game_type['is_avg_vs_avg']:
+        pass_reasons.append('avg-vs-avg')
+    if SKIP_EARLY_SEASON_GAMES and game_type['is_early_season']:
+        pass_reasons.append('early-season')
+
+    game_type['should_pass'] = len(pass_reasons) > 0
+    game_type['pass_reasons'] = pass_reasons
+
+    return game_type
+
+
+def get_bet_recommendation(spread_error, game_type_info, confidence_tier):
+    """
+    V19: Get bet recommendation with PASS option.
+
+    Returns:
+        recommendation: 'BET', 'LEAN', or 'PASS'
+        reason: explanation for the recommendation
+    """
+    error_mag = abs(spread_error)
+
+    # PASS if game type is bad
+    if game_type_info.get('should_pass', False):
+        reasons = game_type_info.get('pass_reasons', [])
+        return 'PASS', f"Skip: {', '.join(reasons)}"
+
+    # BET only for HIGH/MEDIUM-HIGH confidence
+    if confidence_tier in ['HIGH', 'MEDIUM-HIGH']:
+        if error_mag >= SPREAD_ERROR_THRESHOLD:
+            return 'BET', 'Strong edge'
+        else:
+            return 'LEAN', 'Moderate edge'
+
+    # LEAN for MEDIUM confidence with decent edge
+    if confidence_tier == 'MEDIUM' and error_mag >= 3.0:
+        return 'LEAN', 'Marginal edge'
+
+    # PASS for LOW/VERY LOW
+    return 'PASS', 'Low confidence'
 
 
 # =============================================================================

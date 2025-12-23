@@ -54,6 +54,9 @@ class RefreshScheduler:
         self.refresh_all_script = self.base_dir / 'refresh_all_data.py'
         self.fetch_lines_script = self.base_dir / 'fetch_betting_lines.py'
         self.prepare_safe_script = self.base_dir / 'prepare_safe_features.py'
+        # V19: New data fetchers for improved predictions
+        self.fetch_injuries_script = self.base_dir / 'fetch_injuries.py'
+        self.fetch_line_movement_script = self.base_dir / 'fetch_line_movement.py'
 
     def is_gameday(self) -> bool:
         """Check if today is a CFB game day."""
@@ -104,7 +107,7 @@ class RefreshScheduler:
         start_time = time.time()
 
         # Step 1: Refresh raw data from API
-        logger.info("Step 1/3: Running refresh_all_data.py")
+        logger.info("Step 1/5: Running refresh_all_data.py")
         success1, stdout1, stderr1 = self.run_script(self.refresh_all_script, timeout=300)
 
         if not success1:
@@ -112,10 +115,10 @@ class RefreshScheduler:
             logger.error(error_msg)
             return False, error_msg
 
-        logger.info("Step 1/3: Complete")
+        logger.info("Step 1/5: Complete")
 
         # Step 2: Fetch betting lines
-        logger.info("Step 2/3: Running fetch_betting_lines.py")
+        logger.info("Step 2/5: Running fetch_betting_lines.py")
         success2, stdout2, stderr2 = self.run_script(self.fetch_lines_script, timeout=180)
 
         if not success2:
@@ -123,18 +126,43 @@ class RefreshScheduler:
             logger.error(error_msg)
             return False, error_msg
 
-        logger.info("Step 2/3: Complete")
+        logger.info("Step 2/5: Complete")
 
-        # Step 3: Prepare safe features
-        logger.info("Step 3/3: Running prepare_safe_features.py")
-        success3, stdout3, stderr3 = self.run_script(self.prepare_safe_script, timeout=120)
+        # Step 3: V19 - Fetch enhanced line movement data
+        logger.info("Step 3/5: Running fetch_line_movement.py")
+        if self.fetch_line_movement_script.exists():
+            success3, stdout3, stderr3 = self.run_script(self.fetch_line_movement_script, timeout=180)
+            if not success3:
+                logger.warning(f"fetch_line_movement.py failed (non-critical): {stderr3}")
+            else:
+                logger.info("Step 3/5: Complete")
+        else:
+            logger.info("Step 3/5: Skipped (script not found)")
 
-        if not success3:
-            error_msg = f"prepare_safe_features.py failed: {stderr3}"
+        # Step 4: V19 - Fetch injury data (on game days only)
+        if self.is_gameday():
+            logger.info("Step 4/5: Running fetch_injuries.py (gameday)")
+            if self.fetch_injuries_script.exists():
+                success4, stdout4, stderr4 = self.run_script(self.fetch_injuries_script, timeout=300)
+                if not success4:
+                    logger.warning(f"fetch_injuries.py failed (non-critical): {stderr4}")
+                else:
+                    logger.info("Step 4/5: Complete")
+            else:
+                logger.info("Step 4/5: Skipped (script not found)")
+        else:
+            logger.info("Step 4/5: Skipped (not gameday)")
+
+        # Step 5: Prepare safe features
+        logger.info("Step 5/5: Running prepare_safe_features.py")
+        success5, stdout5, stderr5 = self.run_script(self.prepare_safe_script, timeout=120)
+
+        if not success5:
+            error_msg = f"prepare_safe_features.py failed: {stderr5}"
             logger.error(error_msg)
             return False, error_msg
 
-        logger.info("Step 3/3: Complete")
+        logger.info("Step 5/5: Complete")
 
         duration = time.time() - start_time
         success_msg = f"Completed in {duration:.1f}s"

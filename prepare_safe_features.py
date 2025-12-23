@@ -322,7 +322,7 @@ def verify_no_leakage(df):
     print("VERIFYING NO DATA LEAKAGE")
     print("=" * 70)
 
-    # Safe features that should NOT leak
+    # V19: Safe features that should NOT leak (EXCLUDES constant features)
     safe_features = [
         # Core Elo features
         'home_pregame_elo', 'away_pregame_elo', 'elo_diff',
@@ -344,20 +344,15 @@ def verify_no_leakage(df):
         # Vegas-derived
         'elo_vs_spread', 'rest_spread_interaction',
         'home_short_rest', 'away_short_rest', 'expected_total',
-        # Situational
-        'west_coast_early', 'home_lookahead', 'away_lookahead',
-        # NEW V15: PPA efficiency features (season composites - safe)
+        # V19: PPA efficiency features that are NOT constant
         'home_comp_off_ppa', 'away_comp_off_ppa',
         'home_comp_def_ppa', 'away_comp_def_ppa',
         'home_comp_pass_ppa', 'away_comp_pass_ppa',
         'home_comp_rush_ppa', 'away_comp_rush_ppa',
-        'home_comp_success', 'away_comp_success',
-        'home_comp_epa', 'away_comp_epa',
-        'home_comp_ypp', 'away_comp_ypp',
         'pass_efficiency_diff',
-        # NEW V15: Composite features
+        # V19: Composite features (excluding constant ones)
         'matchup_efficiency', 'home_pass_rush_balance', 'away_pass_rush_balance',
-        'success_rate_diff', 'elo_efficiency_interaction', 'momentum_strength',
+        'elo_efficiency_interaction', 'momentum_strength',
         'dominant_home', 'dominant_away', 'rest_favorite_interaction',
         'has_line_movement',
     ]
@@ -387,6 +382,67 @@ def verify_no_leakage(df):
             print(f"  WARNING: {f}: {non_null} values - CONTAINS LEAKAGE!")
 
     return safe_features
+
+
+# =============================================================================
+# V19 IMPROVEMENT: REMOVE CONSTANT/USELESS FEATURES
+# =============================================================================
+# These 41 columns have zero variance (constant values) - waste model capacity
+CONSTANT_FEATURES_TO_REMOVE = [
+    "adj_net_epa",
+    "away_adj_def_epa",
+    "away_adj_off_epa",
+    "away_clean_def_ppa",
+    "away_clean_off_ppa",
+    "away_comp_epa",
+    "away_comp_success",
+    "away_comp_ypp",
+    "away_def_pass_downs_ppa",
+    "away_def_pass_success",
+    "away_def_rush_success",
+    "away_garbage_adj_def",
+    "away_garbage_adj_off",
+    "away_lookahead",
+    "away_off_pass_success",
+    "away_off_rush_success",
+    "away_off_std_downs_ppa",
+    "away_raw_def_ppa",
+    "away_raw_off_ppa",
+    "home_adj_def_epa",
+    "home_adj_off_epa",
+    "home_clean_def_ppa",
+    "home_clean_off_ppa",
+    "home_comp_epa",
+    "home_comp_success",
+    "home_comp_ypp",
+    "home_def_pass_downs_ppa",
+    "home_def_pass_success",
+    "home_def_rush_success",
+    "home_garbage_adj_def",
+    "home_garbage_adj_off",
+    "home_lookahead",
+    "home_off_pass_success",
+    "home_off_rush_success",
+    "home_off_std_downs_ppa",
+    "home_raw_def_ppa",
+    "home_raw_off_ppa",
+    "matchup_advantage",
+    "success_diff",
+    "success_rate_diff",
+    "west_coast_early",
+]
+
+
+def remove_constant_features(df):
+    """Remove constant/zero-variance features that waste model capacity."""
+    print("\nV19: Removing constant features...")
+    removed = 0
+    for col in CONSTANT_FEATURES_TO_REMOVE:
+        if col in df.columns:
+            df = df.drop(columns=[col])
+            removed += 1
+    print(f"  Removed {removed} constant/useless columns")
+    return df
 
 
 # =============================================================================
@@ -489,6 +545,9 @@ def main():
 
     # V17: Dampen error-amplifying features
     df = dampen_error_amplifying_features(df)
+
+    # V19: Remove constant/useless features
+    df = remove_constant_features(df)
 
     # Verify no leakage
     safe_features = verify_no_leakage(df)

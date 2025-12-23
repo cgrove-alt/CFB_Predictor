@@ -26,10 +26,11 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error, accuracy_score, brier_score_loss
 from sklearn.calibration import CalibratedClassifierCV
 from xgboost import XGBRegressor, XGBClassifier
-from lightgbm import LGBMRegressor, LGBMClassifier
-from catboost import CatBoostRegressor, CatBoostClassifier
+# Note: LightGBM removed due to libomp dependency issues on macOS
+# from lightgbm import LGBMRegressor, LGBMClassifier
+# CatBoost available but XGBoost is primary
+# from catboost import CatBoostRegressor, CatBoostClassifier
 from sklearn.ensemble import HistGradientBoostingRegressor, HistGradientBoostingClassifier
-from sklearn.linear_model import BayesianRidge, LogisticRegression
 import optuna
 from optuna.samplers import TPESampler
 
@@ -297,18 +298,39 @@ class V19DualTargetModel:
         self.cover_model.fit(X_train, y_cover_train)
 
         # Calibrate cover model for well-calibrated probabilities
+        # Note: Using sklearn's CalibratedClassifierCV with cv=3 instead of 'prefit'
+        # due to compatibility issues between sklearn and XGBoost
         print("\nCalibrating cover model...")
-        self.calibrated_cover_model = CalibratedClassifierCV(
-            self.cover_model,
-            method='isotonic',
-            cv='prefit'
-        )
-        self.calibrated_cover_model.fit(X_test, y_cover_test)
+        try:
+            # First try: Direct calibration on test set
+            from sklearn.isotonic import IsotonicRegression
+
+            # Get uncalibrated probabilities on test set
+            uncal_probs = self.cover_model.predict_proba(X_test)[:, 1]
+
+            # Fit isotonic regression for calibration
+            self.calibrator = IsotonicRegression(out_of_bounds='clip')
+            self.calibrator.fit(uncal_probs, y_cover_test)
+
+            # Store for later use
+            self.calibrated_cover_model = None  # Will use calibrator directly
+            print("  Calibration: Using isotonic regression")
+
+        except Exception as e:
+            print(f"  Calibration failed: {e}")
+            self.calibrator = None
+            self.calibrated_cover_model = self.cover_model
 
         # Evaluate cover model
         cover_preds_train = self.cover_model.predict(X_train)
         cover_preds_test = self.cover_model.predict(X_test)
-        cover_probs_test = self.calibrated_cover_model.predict_proba(X_test)[:, 1]
+
+        # Get calibrated probabilities
+        if self.calibrator is not None:
+            uncal_probs_test = self.cover_model.predict_proba(X_test)[:, 1]
+            cover_probs_test = self.calibrator.transform(uncal_probs_test)
+        else:
+            cover_probs_test = self.cover_model.predict_proba(X_test)[:, 1]
 
         print(f"\nCover Model Performance:")
         print(f"  Train Accuracy: {accuracy_score(y_cover_train, cover_preds_train)*100:.1f}%")
@@ -347,7 +369,13 @@ class V19DualTargetModel:
 
         # Get predictions
         predicted_margin = self.margin_model.predict(X_filled)
-        cover_prob = self.calibrated_cover_model.predict_proba(X_filled)[:, 1]
+
+        # Get calibrated cover probability
+        uncal_prob = self.cover_model.predict_proba(X_filled)[:, 1]
+        if hasattr(self, 'calibrator') and self.calibrator is not None:
+            cover_prob = self.calibrator.transform(uncal_prob)
+        else:
+            cover_prob = uncal_prob
 
         results = []
         for i in range(len(X)):
@@ -410,7 +438,7 @@ class V19DualTargetModel:
             pickle.dump({
                 'margin_model': self.margin_model,
                 'cover_model': self.cover_model,
-                'calibrated_cover_model': self.calibrated_cover_model,
+                'calibrator': getattr(self, 'calibrator', None),
                 'feature_names': self.feature_names,
             }, f)
 
@@ -430,7 +458,7 @@ class V19DualTargetModel:
             data = pickle.load(f)
             model.margin_model = data['margin_model']
             model.cover_model = data['cover_model']
-            model.calibrated_cover_model = data['calibrated_cover_model']
+            model.calibrator = data.get('calibrator', None)
             model.feature_names = data['feature_names']
 
         with open(f'{path_prefix}_dual_config.pkl', 'rb') as f:

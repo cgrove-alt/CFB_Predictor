@@ -285,6 +285,62 @@ def get_custom_css():
         color: #93C5FD;
         font-size: 13px;
     }
+
+    /* ==============================================
+       UX FIX: Improve text contrast for readability
+       ============================================== */
+
+    /* Fix caption contrast - was dark gray on dark blue */
+    .stCaption, [data-testid="stCaptionContainer"] p {
+        color: #94A3B8 !important;
+    }
+
+    /* Fix tab labels visibility */
+    .stTabs [data-baseweb="tab-list"] button {
+        color: #CBD5E1 !important;
+    }
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+        color: #F8FAFC !important;
+        font-weight: 600;
+    }
+
+    /* Fix general markdown text */
+    .stMarkdown p {
+        color: #CBD5E1;
+    }
+
+    /* Fix sidebar text */
+    [data-testid="stSidebar"] .stMarkdown p {
+        color: #CBD5E1 !important;
+    }
+
+    /* Fix expander text */
+    .streamlit-expanderHeader {
+        color: #F8FAFC !important;
+    }
+    .streamlit-expanderContent p {
+        color: #CBD5E1 !important;
+    }
+
+    /* Fix select box labels */
+    .stSelectbox label, .stMultiSelect label {
+        color: #CBD5E1 !important;
+    }
+
+    /* Fix info/warning boxes text */
+    .stAlert p {
+        color: #1E293B !important;
+    }
+
+    /* Change Full Refresh button from red to orange (less alarming) */
+    button[kind="primary"] {
+        background-color: #F59E0B !important;
+        border-color: #F59E0B !important;
+    }
+    button[kind="primary"]:hover {
+        background-color: #D97706 !important;
+        border-color: #D97706 !important;
+    }
     </style>
     """
 

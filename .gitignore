@@ -1,0 +1,64 @@
+# Sharp Sports Predictor - Git Ignore
+
+# Environment and secrets
+.env
+*.env
+config_local.py
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Model files (large)
+*.pkl
+*.joblib
+*.model
+
+# Data files (large)
+*.csv
+
+# Logs
+logs/
+*.log
+streamlit.log
+quantile_training.log
+
+# Status files
+.refresh_status.json
+
+# Cache
+.cache/
+__pycache__/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/

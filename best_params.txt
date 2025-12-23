@@ -1,0 +1,10 @@
+Best Hyperparameters for CFB Predictor
+========================================
+max_iter: 100
+max_depth: 3
+learning_rate: 0.05
+l2_regularization: 0.1
+
+Validation MAE (2025): 13.02 points
+Baseline MAE: 13.61 points
+Improvement: +0.59 points

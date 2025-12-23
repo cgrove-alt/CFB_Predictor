@@ -1,0 +1,22 @@
+CFB BETTING MODEL - ERROR ROOT CAUSE INSIGHTS
+============================================================
+Generated: 2025-12-13 13:42:09
+
+1. Feature 'away_scoring_trend' amplifies errors by 1.73x
+2. Feature 'home_ats' amplifies errors by 1.27x
+3. Feature 'hfa_diff' amplifies errors by 1.23x
+4. Feature 'home_streak' amplifies errors by 1.22x
+5. Feature 'streak_diff' amplifies errors by 1.22x
+6. Feature 'elo_vs_spread' is the top contributor in 48.9% of high-error games
+7. Feature 'matchup_efficiency' is the top contributor in 23.0% of high-error games
+8. Feature 'home_team_hfa' is the top contributor in 15.2% of high-error games
+9. Feature 'hfa_diff' is the top contributor in 4.9% of high-error games
+10. Feature 'home_streak' is the top contributor in 1.6% of high-error games
+
+============================================================
+RECOMMENDATIONS FOR V16 MODEL:
+============================================================
+1. Add uncertainty features for high-error situations
+2. Create meta-model to predict when primary model is unreliable
+3. Add team-specific calibration features
+4. Consider ensemble with situation-weighted models

@@ -1,0 +1,163 @@
+{
+  "Daniel Gautreaux": {
+    "ref_boost": 3.17,
+    "home_win_pct": 60.7,
+    "games": 89,
+    "conference": "SEC",
+    "significant": false
+  },
+  "Matt Loeffler": {
+    "ref_boost": 3.21,
+    "home_win_pct": 60.7,
+    "games": 112,
+    "conference": "SEC",
+    "significant": false
+  },
+  "Chris Coyte": {
+    "ref_boost": 1.32,
+    "home_win_pct": 58.8,
+    "games": 85,
+    "conference": "ACC",
+    "significant": false
+  },
+  "Brad Allen": {
+    "ref_boost": 4.04,
+    "home_win_pct": 61.5,
+    "games": 78,
+    "conference": "SEC",
+    "significant": false
+  },
+  "Ron Snodgrass": {
+    "ref_boost": 5.61,
+    "home_win_pct": 63.1,
+    "games": 103,
+    "conference": "Big Ten",
+    "significant": true
+  },
+  "John O'Neill": {
+    "ref_boost": 5.32,
+    "home_win_pct": 62.8,
+    "games": 156,
+    "conference": "Big Ten",
+    "significant": true
+  },
+  "Reggie Smith": {
+    "ref_boost": 2.73,
+    "home_win_pct": 60.2,
+    "games": 88,
+    "conference": "Big Ten",
+    "significant": false
+  },
+  "Jerry McGinn": {
+    "ref_boost": 3.37,
+    "home_win_pct": 60.9,
+    "games": 92,
+    "conference": "Big Ten",
+    "significant": false
+  },
+  "Kevin Mar": {
+    "ref_boost": 5.27,
+    "home_win_pct": 62.8,
+    "games": 94,
+    "conference": "Big 12",
+    "significant": true
+  },
+  "Brian Clancey": {
+    "ref_boost": 2.27,
+    "home_win_pct": 59.8,
+    "games": 87,
+    "conference": "Big 12",
+    "significant": false
+  },
+  "Mike Defee": {
+    "ref_boost": 6.96,
+    "home_win_pct": 64.5,
+    "games": 121,
+    "conference": "Big 12",
+    "significant": true
+  },
+  "Drew Martin": {
+    "ref_boost": 1.71,
+    "home_win_pct": 59.2,
+    "games": 76,
+    "conference": "Big 12",
+    "significant": false
+  },
+  "Jerry Magallanes": {
+    "ref_boost": 3.61,
+    "home_win_pct": 61.1,
+    "games": 108,
+    "conference": "ACC",
+    "significant": false
+  },
+  "Duane Heydt": {
+    "ref_boost": 4.74,
+    "home_win_pct": 62.2,
+    "games": 98,
+    "conference": "ACC",
+    "significant": false
+  },
+  "Steven Woods": {
+    "ref_boost": 3.61,
+    "home_win_pct": 61.1,
+    "games": 72,
+    "conference": "ACC",
+    "significant": false
+  },
+  "Patrick Foy": {
+    "ref_boost": 4.7,
+    "home_win_pct": 62.2,
+    "games": 82,
+    "conference": "MWC",
+    "significant": false
+  },
+  "Mike Mothershed": {
+    "ref_boost": 4.04,
+    "home_win_pct": 61.5,
+    "games": 91,
+    "conference": "MWC",
+    "significant": false
+  },
+  "Bobby Moreau": {
+    "ref_boost": 3.26,
+    "home_win_pct": 60.8,
+    "games": 79,
+    "conference": "MWC",
+    "significant": false
+  },
+  "Kevin Randall": {
+    "ref_boost": 4.13,
+    "home_win_pct": 61.6,
+    "games": 86,
+    "conference": "AAC",
+    "significant": false
+  },
+  "Ron Hudson": {
+    "ref_boost": 4.66,
+    "home_win_pct": 62.2,
+    "games": 74,
+    "conference": "C-USA",
+    "significant": false
+  },
+  "Tim Barker": {
+    "ref_boost": 4.26,
+    "home_win_pct": 61.8,
+    "games": 68,
+    "conference": "Sun Belt",
+    "significant": false
+  },
+  "Rick Warne": {
+    "ref_boost": 5.66,
+    "home_win_pct": 63.2,
+    "games": 95,
+    "conference": "MAC",
+    "significant": true
+  },
+  "Adam McClurg": {
+    "ref_boost": 3.06,
+    "home_win_pct": 60.6,
+    "games": 71,
+    "conference": "MAC",
+    "significant": false
+  }
+}

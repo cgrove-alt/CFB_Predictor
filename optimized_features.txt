@@ -1,0 +1,55 @@
+RFECV Optimized Feature List
+========================================
+
+Baseline MAE: 7.18 points (45 features)
+Optimized MAE: 7.21 points (21 features)
+Improvement: -0.02 points
+
+SELECTED FEATURES:
+  - home_pregame_elo
+  - away_pregame_elo
+  - away_off_pass_success
+  - away_def_pass_success
+  - home_off_std_downs_ppa
+  - away_off_std_downs_ppa
+  - away_def_pass_downs_ppa
+  - home_comp_off_ppa
+  - home_comp_def_ppa
+  - away_comp_off_ppa
+  - away_comp_def_ppa
+  - away_comp_pass_ppa
+  - home_comp_epa
+  - home_comp_success
+  - away_comp_epa
+  - away_comp_success
+  - away_comp_ypp
+  - home_clean_off_ppa
+  - home_clean_def_ppa
+  - away_clean_off_ppa
+  - away_clean_def_ppa
+
+DROPPED FEATURES:
+  - home_last5_score_avg
+  - away_last5_score_avg
+  - home_last5_defense_avg
+  - away_last5_defense_avg
+  - home_rest_days
+  - away_rest_days
+  - rest_advantage
+  - west_coast_early
+  - home_lookahead
+  - away_lookahead
+  - home_off_rush_success
+  - home_off_pass_success
+  - home_def_rush_success
+  - home_def_pass_success
+  - away_off_rush_success
+  - away_def_rush_success
+  - home_def_pass_downs_ppa
+  - home_comp_pass_ppa
+  - home_comp_rush_ppa
+  - away_comp_rush_ppa
+  - home_comp_ypp
+  - home_team_hfa
+  - away_team_hfa
+  - hfa_diff

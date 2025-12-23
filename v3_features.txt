@@ -1,0 +1,16 @@
+home_pregame_elo
+away_pregame_elo
+home_last5_score_avg
+away_last5_score_avg
+home_last5_defense_avg
+away_last5_defense_avg
+home_comp_off_ppa
+away_comp_off_ppa
+home_comp_def_ppa
+away_comp_def_ppa
+home_comp_epa
+away_comp_epa
+home_team_hfa
+hfa_diff
+rest_advantage
+net_epa

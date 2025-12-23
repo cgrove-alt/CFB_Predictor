@@ -1,0 +1,47 @@
+CFB V10 Improved Model
+==================================================
+
+ARCHITECTURE: Weighted Voting Ensemble
+
+BASE MODELS:
+  XGBoost_B_tuned: 25.1% weight (MAE: 12.88)
+  XGBoost_tuned: 25.1% weight (MAE: 12.88)
+  HGB: 25.1% weight (MAE: 12.90)
+  RF: 24.6% weight (MAE: 13.15)
+
+FINAL ENSEMBLE MAE: 12.89
+BASELINE MAE: 12.95
+IMPROVEMENT: 0.06 points
+
+FEATURES (31):
+  - home_pregame_elo
+  - away_pregame_elo
+  - home_last5_score_avg
+  - away_last5_score_avg
+  - home_last5_defense_avg
+  - away_last5_defense_avg
+  - home_comp_off_ppa
+  - away_comp_off_ppa
+  - home_comp_def_ppa
+  - away_comp_def_ppa
+  - home_comp_pass_ppa
+  - away_comp_pass_ppa
+  - home_comp_rush_ppa
+  - away_comp_rush_ppa
+  - home_comp_success
+  - away_comp_success
+  - home_team_hfa
+  - away_team_hfa
+  - hfa_diff
+  - home_rest_days
+  - away_rest_days
+  - rest_diff
+  - elo_diff
+  - net_epa
+  - pass_efficiency_diff
+  - epa_elo_interaction
+  - success_diff
+  - home_win_streak
+  - away_win_streak
+  - momentum_diff
+  - trajectory_diff

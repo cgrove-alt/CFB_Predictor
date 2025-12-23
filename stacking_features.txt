@@ -1,0 +1,50 @@
+CFB Pro Stacking Model
+========================================
+
+Architecture: StackingRegressor (Experts + Boss)
+
+THE EXPERTS (Base Models):
+  1. Gradient (HistGradientBoostingRegressor)
+     - Handles NaN natively
+     - max_iter: 100, max_depth: 6
+
+  2. Forest (RandomForestRegressor)
+     - Pipeline: Imputer -> RF
+     - n_estimators: 100, max_depth: 10
+
+  3. Linear (Ridge)
+     - Pipeline: Imputer -> Scaler -> Ridge
+     - alpha: 1.0
+
+THE BOSS (Meta Model):
+  - RidgeCV with cross-validation
+  - Learns optimal expert weights
+
+Training: 2022-2024 (11234 games)
+Testing: 2025 (3742 games)
+Single Model MAE: 13.79 points
+Stacking MAE: 13.80 points
+Improvement: -0.01 points
+
+Features (21):
+  - home_pregame_elo
+  - away_pregame_elo
+  - home_last5_score_avg
+  - away_last5_score_avg
+  - home_last5_defense_avg
+  - away_last5_defense_avg
+  - home_comp_off_ppa
+  - away_comp_off_ppa
+  - home_comp_def_ppa
+  - away_comp_def_ppa
+  - net_epa
+  - home_team_hfa
+  - away_team_hfa
+  - home_rest
+  - away_rest
+  - rest_advantage
+  - rest_diff
+  - elo_diff
+  - pass_efficiency_diff
+  - epa_elo_interaction
+  - success_diff

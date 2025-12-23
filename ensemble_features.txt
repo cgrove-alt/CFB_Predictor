@@ -1,0 +1,31 @@
+CFB Robust Ensemble Model
+========================================
+
+Architecture: Pipeline (Janitor + Senate)
+  - Janitor: SimpleImputer (strategy='mean')
+  - Senate: VotingRegressor
+    - Elder (HGB): weight=0.5
+    - Crowd (RF): weight=0.3
+    - Baseline (LR): weight=0.2
+
+Training: 2022-2024 (11234 games)
+Testing: 2025 (3742 games)
+MAE: 15.64 points
+
+Features (16):
+  - home_pregame_elo
+  - away_pregame_elo
+  - home_last5_score_avg
+  - away_last5_score_avg
+  - home_last5_defense_avg
+  - away_last5_defense_avg
+  - home_comp_off_ppa
+  - away_comp_off_ppa
+  - home_comp_def_ppa
+  - away_comp_def_ppa
+  - net_epa
+  - home_team_hfa
+  - away_team_hfa
+  - home_rest
+  - away_rest
+  - rest_advantage

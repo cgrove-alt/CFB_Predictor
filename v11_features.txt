@@ -1,0 +1,39 @@
+CFB V11 Comprehensive Model
+==================================================
+
+IMPROVEMENTS:
+  - Vegas spread as baseline
+  - Feature importance selection
+  - Walk-forward validation
+  - Sample weighting (recent games weighted higher)
+  - Blowout filtering for training
+
+FINAL ENSEMBLE MAE: 14.58
+Best Single Model MAE: 13.16
+
+SELECTED FEATURES (25):
+  - hfa_diff
+  - pass_efficiency_diff
+  - vegas_spread_filled
+  - home_comp_off_ppa
+  - large_spread
+  - trajectory_diff
+  - away_comp_off_ppa
+  - home_team_hfa
+  - home_comp_def_ppa
+  - home_implied_score
+  - momentum_diff
+  - away_comp_def_ppa
+  - away_team_hfa
+  - away_implied_score
+  - home_comp_rush_ppa
+  - away_last5_defense_avg
+  - away_comp_rush_ppa
+  - away_last5_score_avg
+  - home_last5_defense_avg
+  - home_last5_score_avg
+  - away_win_streak
+  - home_win_streak
+  - net_epa
+  - sos_diff
+  - expected_total

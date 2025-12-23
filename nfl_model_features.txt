@@ -1,0 +1,21 @@
+NFL Spread Model Features
+========================================
+
+Training: 2022-2023 (838 games)
+Testing: 2025 (78 games)
+MAE: 10.19 points
+
+Features:
+  - home_rolling_off_epa
+  - away_rolling_off_epa
+  - home_rolling_def_epa
+  - away_rolling_def_epa
+  - net_off_epa
+  - net_def_epa
+  - epa_diff
+  - def_epa_diff
+  - success_diff
+  - home_rest
+  - away_rest
+  - rest_advantage
+  - spread_line

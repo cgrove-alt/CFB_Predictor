@@ -1,0 +1,154 @@
+============================================================
+CFB BETTING MODEL - ERROR PATTERN ANALYSIS
+============================================================
+Generated: 2025-12-13 13:36:20
+Games Analyzed: 1541
+
+OVERALL PERFORMANCE
+----------------------------------------
+Mean Absolute Error: 9.47
+Direction Accuracy:  66.6%
+Prediction Bias:     +0.26
+
+ANALYSIS BY SPREAD MAGNITUDE
+----------------------------------------
+     category  games  pct_of_total       mae      std  direction_accuracy  mean_prediction  mean_actual  prediction_bias
+Pick-em (0-3)    261     16.937054  8.971937 7.670353           66.283525         0.135764     0.411877        -0.276114
+  Small (3-7)    361     23.426347  9.476468 8.511587           64.819945         0.266772     0.267313        -0.000541
+Medium (7-14)    393     25.502920  9.216335 8.006595           67.938931         1.348461     0.905852         0.442608
+Large (14-21)    238     15.444517  9.552768 7.639157           68.487395         0.382280    -0.451681         0.833960
+Blowout (21+)    288     18.689163 10.207918 7.564271           65.972222         1.929133     1.593750         0.335383
+
+ANALYSIS BY ELO MATCHUP
+----------------------------------------
+                    category  games  pct_of_total       mae      std  direction_accuracy  avg_elo_diff
+Elite vs Elite (both > 1600)    119      7.722258  7.502003 5.650559           75.630252    151.025210
+            Elite vs Average    301     19.532771  7.921906 6.104850           75.415282    326.059801
+          Average vs Average    789     51.200519 11.349909 9.121314           55.386565      9.057034
+   Mismatch (Elo diff > 300)    220     14.276444  7.932611 6.116720           76.363636    472.054545
+ Weak Team Involved (< 1400)    434     28.163530  7.521210 6.002209           80.645161    275.299539
+
+ANALYSIS BY WEEK (Cold Start Effect)
+----------------------------------------
+ week  games       mae      std  direction_accuracy  prediction_bias
+    1    126  9.110858 7.427866           72.222222         1.593231
+    2    119  9.986094 7.573456           67.226891        -0.955316
+    3    108  9.832569 7.883070           61.111111        -0.892360
+    4    107  8.577787 7.903829           76.635514        -0.964521
+    5    106  9.068266 7.483196           68.867925        -0.732115
+    6     95 10.529842 7.998197           51.578947        -0.709881
+    7    107  9.806382 8.350355           64.485981         0.183765
+    8    108 10.098950 8.169346           69.444444        -0.231072
+    9    112  9.371790 8.007771           64.285714        -0.115226
+   10    110 10.068013 8.868730           69.090909         1.984806
+   11    113  9.035655 8.209692           65.486726         0.679500
+   12    121  8.573854 7.692451           59.504132         0.705573
+   13    123  9.837511 8.144983           65.040650         1.775528
+   14     77  9.129080 7.484428           79.220779         1.464821
+   15      9  5.778222 6.344726           77.777778        -4.350611
+
+ANALYSIS BY CONFIDENCE TIER
+----------------------------------------
+confidence_tier  games  pct_of_total       mae      std  direction_accuracy  wins  losses  profit_units   roi_pct
+           HIGH    645     41.855938  8.424276 6.910588           81.550388   526     119         395.1 55.687104
+    MEDIUM-HIGH    208     13.497729 10.351078 8.154903           62.019231   129      79          42.1 18.400350
+         MEDIUM    262     17.001947 10.381748 8.750298           57.633588   151     111          28.9 10.027759
+            LOW    213     13.822193 10.906357 9.253460           48.826291   104     109         -15.9 -6.786172
+       VERY LOW    213     13.822193  9.241243 7.774756           54.929577   117      96          11.4  4.865557
+
+ANALYSIS BY PREDICTION DIRECTION
+----------------------------------------
+signal  games  pct_of_total      mae  direction_accuracy  mean_prediction  mean_actual
+   BUY    846     54.899416 9.731476           65.366430         6.474891     5.580969
+  FADE    695     45.100584 9.158721           68.201439        -5.999282    -5.482014
+
+ANALYSIS BY HOME/AWAY COVERAGE
+----------------------------------------
+           category  games  predicted_correctly  accuracy  avg_prediction_error
+  Home Team Covered    774                553.0 71.447028              9.250605
+  Away Team Covered    752                468.0 62.234043              9.814683
+Model Predicted BUY    846                  NaN       NaN                   NaN
+ Actual BUY Results    774                  NaN       NaN                   NaN
+
+ERROR DISTRIBUTION
+----------------------------------------
+mean           : 9.47
+std            : 7.94
+min            : 0.00
+max            : 47.38
+median         : 7.48
+p25            : 3.40
+p75            : 13.42
+p90            : 20.85
+p95            : 25.19
+p99            : 34.94
+skewness       : 1.28
+kurtosis       : 1.77
+
+SYSTEMATIC ERRORS BY TEAM
+----------------------------------------
+
+WORST PREDICTIONS (by home team):
+                      mae    std  games  direction_accuracy  mean_pred  mean_actual   bias
+home_team                                                                                 
+Samford             23.98  11.96      5                0.20       2.08       -21.90  23.98
+Davidson            22.66  13.10      5                0.40       7.06        -5.30  12.36
+Monmouth            22.44  11.82      5                0.60       1.41        -9.40  10.81
+Brown               21.54  17.13      5                0.60      -0.10        13.00 -13.10
+Indiana State       21.28   9.29      5                0.00      -2.63        -3.00   0.37
+Texas Southern      20.11  13.85      5                0.20       2.07         1.80   0.27
+North Carolina A&T  19.80  15.47      6                0.33      -1.84       -13.42  11.58
+St. Thomas (MN)     19.45   7.70      5                0.60       3.61         7.40  -3.79
+Mercyhurst          19.07  12.08      5                0.40      -2.15        -2.40   0.25
+South Dakota State  18.52  14.15      8                0.50       1.20        -7.12   8.32
+
+
+UNDERESTIMATED AT HOME (we predict too low):
+                       mae   std  games  direction_accuracy  mean_pred  mean_actual  bias
+home_team                                                                                
+Stephen F. Austin     4.47  2.98      5                0.80       4.68         7.70 -3.02
+Minnesota             4.21  3.00      7                0.86       4.70         7.79 -3.09
+Arizona               4.32  3.63      7                0.86       5.50         8.64 -3.14
+Southern Utah         9.38  5.39      6                0.67       3.11         6.33 -3.22
+Kentucky              7.17  4.30      7                0.71       1.96         5.36 -3.40
+North Texas           7.83  4.40      7                0.86       8.61        12.21 -3.60
+Utah Tech            12.95  5.17      6                0.33      -2.29         1.42 -3.71
+St. Thomas (MN)      19.45  7.70      5                0.60       3.61         7.40 -3.79
+Bowling Green         8.83  5.54      6                1.00      -8.38        -4.58 -3.80
+Central Connecticut   7.53  6.03      6                0.50       0.83         4.75 -3.92
+
+
+OVERESTIMATED AT HOME (we predict too high):
+                      mae    std  games  direction_accuracy  mean_pred  mean_actual   bias
+home_team                                                                                 
+Samford             23.98  11.96      5                0.20       2.08       -21.90  23.98
+UAlbany             16.26  12.72      6                0.50       2.24       -13.17  15.41
+Florida A&M         14.89  11.58      6                0.17       2.80       -12.08  14.88
+Idaho               18.01  11.29      6                0.33       2.86       -11.50  14.36
+Alabama A&M         16.52  15.84      6                0.33      -0.19       -13.67  13.48
+Davidson            22.66  13.10      5                0.40       7.06        -5.30  12.36
+Auburn              12.02   7.11      7                0.14       8.52        -3.50  12.02
+Gardner-Webb        15.21  13.69      5                0.60      -0.66       -12.40  11.74
+North Carolina A&T  19.80  15.47      6                0.33      -1.84       -13.42  11.58
+Illinois State      11.83  15.46      5                0.60      -0.04       -11.50  11.46
+
+
+============================================================
+KEY FINDINGS SUMMARY
+============================================================
+
+1. HARDEST SPREAD CATEGORY: Blowout (21+)
+   MAE: 10.21 | Direction: 66.0%
+
+2. BEST CONFIDENCE TIER: HIGH
+   MAE: 8.42 | Direction: 81.6%
+
+3. COLD START EFFECT:
+   Weeks 1-3 MAE: 9.64
+   Weeks 10+ MAE: 8.74
+   Improvement: +0.91
+
+4. PREDICTION BIAS: +0.26
+   Model is relatively well-calibrated
+
+============================================================

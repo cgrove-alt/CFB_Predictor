@@ -90,17 +90,35 @@ def get_last_n_games(team, season, week, team_games, n=5):
     previous_games.sort(key=lambda x: (x['season'], x['week']), reverse=True)
     return previous_games[:n]
 
-def calculate_rolling_stats(team, season, week, team_games, n=5):
+def calculate_rolling_stats(team, season, week, team_games, n=5, weighted=False):
     """Calculate rolling average stats for a team's last n games"""
     last_games = get_last_n_games(team, season, week, team_games, n)
 
     if len(last_games) == 0:
         return np.nan, np.nan
 
-    avg_scored = np.mean([g['points_scored'] for g in last_games])
-    avg_allowed = np.mean([g['points_allowed'] for g in last_games])
+    if weighted and len(last_games) >= 2:
+        # V18 IMPROVEMENT: Exponential recency weighting
+        # More recent games matter more
+        # Weights: [0.35, 0.25, 0.20, 0.12, 0.08] for 5 games
+        base_weights = [0.35, 0.25, 0.20, 0.12, 0.08]
+        weights = base_weights[:len(last_games)]
+        # Normalize weights to sum to 1
+        weights = [w / sum(weights) for w in weights]
+
+        avg_scored = sum(g['points_scored'] * w for g, w in zip(last_games, weights))
+        avg_allowed = sum(g['points_allowed'] * w for g, w in zip(last_games, weights))
+    else:
+        # Simple average
+        avg_scored = np.mean([g['points_scored'] for g in last_games])
+        avg_allowed = np.mean([g['points_allowed'] for g in last_games])
 
     return avg_scored, avg_allowed
+
+
+def calculate_weighted_rolling_stats(team, season, week, team_games, n=5):
+    """V18: Calculate recency-weighted rolling stats"""
+    return calculate_rolling_stats(team, season, week, team_games, n, weighted=True)
 
 # ============================================================
 # REST DAYS CALCULATION
@@ -195,11 +213,17 @@ def is_lookahead_spot(team, season, week, team_games, elo_threshold=1700):
 # ============================================================
 print("Calculating features (this may take a moment)...")
 
-# Rolling stats
+# Rolling stats (simple average)
 home_last5_score = []
 home_last5_defense = []
 away_last5_score = []
 away_last5_defense = []
+
+# V18: Weighted rolling stats (recency weighted)
+home_weighted_score = []
+home_weighted_defense = []
+away_weighted_score = []
+away_weighted_defense = []
 
 # Rest days
 home_rest_days = []
@@ -219,13 +243,21 @@ for idx, row in df.iterrows():
     home_team = row['home_team']
     away_team = row['away_team']
 
-    # Rolling stats
+    # Rolling stats (simple average)
     h_score, h_defense = calculate_rolling_stats(home_team, season, week, team_games)
     a_score, a_defense = calculate_rolling_stats(away_team, season, week, team_games)
     home_last5_score.append(h_score)
     home_last5_defense.append(h_defense)
     away_last5_score.append(a_score)
     away_last5_defense.append(a_defense)
+
+    # V18: Weighted rolling stats (recency weighted)
+    h_w_score, h_w_defense = calculate_weighted_rolling_stats(home_team, season, week, team_games)
+    a_w_score, a_w_defense = calculate_weighted_rolling_stats(away_team, season, week, team_games)
+    home_weighted_score.append(h_w_score)
+    home_weighted_defense.append(h_w_defense)
+    away_weighted_score.append(a_w_score)
+    away_weighted_defense.append(a_w_defense)
 
     # Rest days
     h_rest = calculate_rest_days(home_team, season, week, team_games)
@@ -248,11 +280,22 @@ for idx, row in df.iterrows():
 # ============================================================
 print("\nAdding new columns...")
 
-# Rolling stats
+# Rolling stats (simple average)
 df['home_last5_score_avg'] = home_last5_score
 df['home_last5_defense_avg'] = home_last5_defense
 df['away_last5_score_avg'] = away_last5_score
 df['away_last5_defense_avg'] = away_last5_defense
+
+# V18: Weighted rolling stats (recency weighted - more recent games matter more)
+df['home_weighted_score'] = home_weighted_score
+df['home_weighted_defense'] = home_weighted_defense
+df['away_weighted_score'] = away_weighted_score
+df['away_weighted_defense'] = away_weighted_defense
+
+# V18: Scoring momentum (weighted vs simple - shows if team is trending up/down)
+df['home_scoring_momentum'] = df['home_weighted_score'] - df['home_last5_score_avg']
+df['away_scoring_momentum'] = df['away_weighted_score'] - df['away_last5_score_avg']
+df['scoring_momentum_diff'] = df['home_scoring_momentum'] - df['away_scoring_momentum']
 
 # Rest days
 df['home_rest_days'] = home_rest_days

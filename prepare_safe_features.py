@@ -390,35 +390,73 @@ def verify_no_leakage(df):
 
 
 # =============================================================================
-# V17 IMPROVEMENT: DAMPEN ERROR-AMPLIFYING FEATURES
+# V18 IMPROVEMENT: DAMPEN & CAP ERROR-AMPLIFYING FEATURES
 # =============================================================================
 # Based on SHAP error analysis, these features amplify prediction errors
 # Research: Features with >1.2x error amplification should be dampened
 DAMPEN_FEATURES = {
     'away_scoring_trend': 0.5,   # 1.73x amplification → reduce by 50%
+    'home_scoring_trend': 0.5,   # Symmetric treatment
     'home_ats': 0.7,              # 1.27x → reduce by 30%
+    'away_ats': 0.7,              # Symmetric treatment
     'hfa_diff': 0.8,              # 1.23x → reduce by 20%
     'home_streak': 0.8,           # 1.22x → reduce by 20%
+    'away_streak': 0.8,           # Symmetric treatment
     'streak_diff': 0.8,           # 1.22x → reduce by 20%
-    'home_scoring_trend': 0.9,    # 1.11x → reduce by 10%
+    'ats_diff': 0.7,              # Derived from ATS
+    'elo_momentum_diff': 0.85,    # Momentum features noisy
+}
+
+# V18: Cap extreme values to prevent outliers from dominating
+CAP_FEATURES = {
+    'home_streak': (-4, 4),       # Cap streaks at ±4
+    'away_streak': (-4, 4),
+    'streak_diff': (-6, 6),
+    'home_ats': (0.25, 0.75),     # ATS between 25% and 75%
+    'away_ats': (0.25, 0.75),
+    'ats_diff': (-0.3, 0.3),
+    'home_scoring_trend': (-8, 8),  # Cap scoring trends
+    'away_scoring_trend': (-8, 8),
+    'home_elo_momentum': (-100, 100),  # Cap Elo momentum
+    'away_elo_momentum': (-100, 100),
+    'elo_momentum_diff': (-150, 150),
+    'line_movement': (-5, 5),      # Cap line movement to ±5 points
 }
 
 
 def dampen_error_amplifying_features(df):
     """
-    Dampen features that historically amplify prediction errors.
+    Dampen and cap features that historically amplify prediction errors.
 
-    Based on V16 SHAP error analysis:
+    Based on V16/V17 SHAP error analysis:
     - away_scoring_trend: 1.73x error amplification (highest)
     - home_ats: 1.27x
     - hfa_diff: 1.23x
     - home_streak: 1.22x
     - streak_diff: 1.22x
 
-    Dampening reduces their influence to prevent over-weighting.
+    V18 improvements:
+    - Symmetric treatment of home/away features
+    - Capping extreme values to prevent outliers
     """
-    print("\nV17: Dampening error-amplifying features...")
+    print("\nV18: Dampening and capping error-amplifying features...")
 
+    # Step 1: Cap extreme values first (before dampening)
+    capped_count = 0
+    for feature, (min_val, max_val) in CAP_FEATURES.items():
+        if feature in df.columns:
+            original_min = df[feature].min()
+            original_max = df[feature].max()
+            clipped_low = (df[feature] < min_val).sum()
+            clipped_high = (df[feature] > max_val).sum()
+            df[feature] = df[feature].clip(min_val, max_val)
+            if clipped_low > 0 or clipped_high > 0:
+                capped_count += 1
+                print(f"  {feature}: capped [{min_val}, {max_val}] (clipped {clipped_low} low, {clipped_high} high)")
+
+    print(f"  Total features capped: {capped_count}")
+
+    # Step 2: Dampen features
     dampened_count = 0
     for feature, factor in DAMPEN_FEATURES.items():
         if feature in df.columns:

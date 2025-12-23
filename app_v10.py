@@ -1,5 +1,5 @@
 """
-Sharp Picks V10 - Self-Learning Spread Error Model (V16)
+Sharp Picks CFB - Self-Learning Spread Error Model
 
 This app uses the V16 Self-Learning model which:
 1. Predicts SPREAD ERROR (how wrong Vegas will be)
@@ -130,7 +130,7 @@ V16_UNCERTAINTY_FEATURES = [
 SAFE_FEATURES = SAFE_FEATURES_V15 + V16_UNCERTAINTY_FEATURES
 
 # Page config - must be first Streamlit command
-st.set_page_config(page_title="Sharp Picks V10", page_icon="$", layout="wide")
+st.set_page_config(page_title="Sharp Picks CFB", page_icon="$", layout="wide")
 
 # Check password before showing any content
 check_password()
@@ -205,13 +205,14 @@ def get_custom_css():
         font-size: 26px;
         font-weight: 700;
         margin: 12px 0 4px 0;
-        color: #F8FAFC;
+        color: #F8FAFC !important;
     }
     .bet-instruction-hero {
         font-size: 32px;
+        color: #F8FAFC !important;
     }
     .opponent {
-        color: #94A3B8;
+        color: #B4C6DC;  /* Improved contrast from #94A3B8 */
         font-size: 14px;
         margin-bottom: 16px;
     }
@@ -269,7 +270,7 @@ def get_custom_css():
     }
     .metric-label {
         font-size: 12px;
-        color: #94A3B8;
+        color: #B4C6DC;  /* Improved contrast from #94A3B8 */
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
@@ -290,9 +291,9 @@ def get_custom_css():
        UX FIX: Improve text contrast for readability
        ============================================== */
 
-    /* Fix caption contrast - was dark gray on dark blue */
+    /* Fix caption contrast - improved from #94A3B8 */
     .stCaption, [data-testid="stCaptionContainer"] p {
-        color: #94A3B8 !important;
+        color: #B4C6DC !important;
     }
 
     /* Fix tab labels visibility */
@@ -302,6 +303,14 @@ def get_custom_css():
     .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
         color: #F8FAFC !important;
         font-weight: 600;
+    }
+
+    /* Fix st.metric() component contrast */
+    [data-testid="stMetricLabel"] {
+        color: #B4C6DC !important;
+    }
+    [data-testid="stMetricValue"] {
+        color: #F8FAFC !important;
     }
 
     /* Fix general markdown text */
@@ -314,7 +323,20 @@ def get_custom_css():
         color: #CBD5E1 !important;
     }
 
-    /* Fix expander text */
+    /* Fix main title (st.title) contrast */
+    h1, [data-testid="stHeading"] h1 {
+        color: #F8FAFC !important;
+    }
+
+    /* Fix expander header contrast - updated selectors for newer Streamlit */
+    [data-testid="stExpander"] summary,
+    [data-testid="stExpander"] summary span,
+    .st-emotion-cache-p5msec,
+    details summary {
+        color: #E2E8F0 !important;
+    }
+
+    /* Fix expander text (legacy selector kept for compatibility) */
     .streamlit-expanderHeader {
         color: #F8FAFC !important;
     }
@@ -340,6 +362,39 @@ def get_custom_css():
     button[kind="primary"]:hover {
         background-color: #D97706 !important;
         border-color: #D97706 !important;
+    }
+
+    /* Game status badges */
+    .game-status-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-left: 8px;
+    }
+    .game-status-live {
+        background: #EF4444;
+        color: #FFFFFF;
+        animation: pulse 1.5s infinite;
+    }
+    .game-status-soon {
+        background: #F59E0B;
+        color: #1E293B;
+    }
+    .game-status-today {
+        background: #3B82F6;
+        color: #FFFFFF;
+    }
+    .game-status-future {
+        background: #475569;
+        color: #E2E8F0;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
     }
     </style>
     """
@@ -1064,6 +1119,8 @@ def generate_spread_error_predictions(games, lines_dict, model, history_df, seas
                 'upper_bound': upper_bound,
                 'interval_width': interval_width,
                 'interval_crosses_zero': interval_crosses_zero,
+                'start_date': game.get('start_date'),  # For game time badge
+                'completed': game.get('completed', False),  # Game status
             })
         except Exception as e:
             logger.error(f"Error predicting {game.get('awayTeam', '?')} @ {game.get('homeTeam', '?')}: {e}")
@@ -1244,6 +1301,50 @@ def generate_totals_predictions(games, lines_dict, model, history_df, bankroll):
     return pd.DataFrame(predictions)
 
 
+def format_game_time_badge(start_date_str):
+    """Format game time as a user-friendly badge.
+
+    Returns tuple of (badge_text, badge_class) for CSS styling.
+    """
+    if not start_date_str:
+        return None, None
+
+    try:
+        # Parse ISO format date from CFBD API
+        # Format: "2024-12-21T18:00:00.000Z"
+        game_time = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+        now = datetime.now(game_time.tzinfo) if game_time.tzinfo else datetime.now()
+
+        # Calculate time until kickoff
+        time_diff = game_time - now
+        total_seconds = time_diff.total_seconds()
+
+        if total_seconds < 0:
+            # Game has started or is over
+            if total_seconds > -4 * 3600:  # Within 4 hours - probably still playing
+                return "LIVE", "game-status-live"
+            else:
+                return None, None  # Game is over, no badge needed
+        elif total_seconds < 3600:
+            # Less than 1 hour
+            mins = int(total_seconds / 60)
+            return f"Kickoff in {mins}m", "game-status-soon"
+        elif total_seconds < 86400:
+            # Less than 24 hours
+            hours = int(total_seconds / 3600)
+            mins = int((total_seconds % 3600) / 60)
+            if mins > 0:
+                return f"Kickoff in {hours}h {mins}m", "game-status-today"
+            return f"Kickoff in {hours}h", "game-status-today"
+        else:
+            # Show date and time
+            # Convert to local display format
+            local_time = game_time.strftime("%b %d, %I:%M %p")
+            return local_time, "game-status-future"
+    except Exception:
+        return None, None
+
+
 def render_totals_card(bet, is_hero=False):
     """Render a styled totals bet card."""
     signal_class = "over" if bet['Signal'] == 'OVER' else "under"
@@ -1275,7 +1376,7 @@ def render_totals_card(bet, is_hero=False):
 # BET CARD COMPONENT
 # =============================================================================
 def render_bet_card(bet, is_hero=False):
-    """Render a styled bet card with optional prediction interval."""
+    """Render a styled bet card with optional prediction interval and game status."""
     signal_class = "buy" if bet['Signal'] == 'BUY' else "fade"
 
     # Get confidence tier from bet data (always show badge)
@@ -1283,6 +1384,14 @@ def render_bet_card(bet, is_hero=False):
     conf_class = bet.get('confidence_class', 'confidence-medium')
     conf_emoji = bet.get('confidence_emoji', '⚠️')
     conf_badge = f'<span class="confidence-badge {conf_class}">{conf_emoji} {conf_tier}</span>'
+
+    # Get game status badge
+    game_time_badge = ""
+    start_date = bet.get('start_date')
+    if start_date:
+        badge_text, badge_class = format_game_time_badge(start_date)
+        if badge_text:
+            game_time_badge = f'<span class="game-status-badge {badge_class}">{badge_text}</span>'
 
     # Format spread
     spread_str = f"{bet['spread_to_bet']:+.1f}" if bet['spread_to_bet'] != 0 else "PK"
@@ -1310,7 +1419,7 @@ def render_bet_card(bet, is_hero=False):
     <div class="bet-card {signal_class}">
         {conf_badge}
         <div class="{instruction_class}">BET: {bet['team_to_bet']} {spread_str}</div>
-        <div class="opponent">vs {bet['opponent']}</div>
+        <div class="opponent">vs {bet['opponent']}{game_time_badge}</div>
         <div class="{amount_class}">${bet['bet_size']:.0f}</div>
         <div class="win-prob">{bet['win_prob']*100:.0f}% Est. Win Probability</div>
         <div class="spread-error">Predicted edge: {abs(bet['spread_error']):.1f} pts vs Vegas</div>
@@ -1417,24 +1526,88 @@ def get_scheduler_status():
 # MAIN APP
 # =============================================================================
 
-# Header
-col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 2, 2])
+# =============================================================================
+# AUTO-DETECT SEASON, TYPE, AND WEEK
+# =============================================================================
+def get_auto_detected_settings():
+    """Auto-detect season, season_type, and week based on current date."""
+    today = datetime.now()
+    current_year = today.year
+    current_month = today.month
+
+    # Determine season year
+    # CFB season runs Aug-Jan, so Jan games belong to previous year's season
+    if current_month == 1:
+        season = current_year - 1
+    else:
+        season = current_year
+
+    # Determine season type
+    # Bowl season: December 14 - January 31
+    # Regular season: Late August - Early December
+    if current_month == 12 and today.day >= 14:
+        season_type = "postseason"
+        week = 1  # Bowl games are week 1 of postseason
+    elif current_month == 1:
+        season_type = "postseason"
+        week = 1
+    else:
+        season_type = "regular"
+        # Estimate week based on date (CFB typically starts last week of August)
+        # Week 0: ~Aug 24, Week 1: ~Aug 31, etc.
+        if current_month < 8:
+            week = 1  # Off-season, default to week 1
+        else:
+            # Calculate approximate week
+            season_start = datetime(current_year, 8, 24)  # Approximate Week 0
+            days_since_start = (today - season_start).days
+            week = max(0, min(15, days_since_start // 7))
+            if week == 0:
+                week = 1  # Default to week 1 if before season
+
+    return season, season_type, week
+
+# Get auto-detected defaults
+auto_season, auto_season_type, auto_week = get_auto_detected_settings()
+
+# Header - Simplified with auto-detection
+col1, col2, col3 = st.columns([4, 3, 2])
 with col1:
-    st.title("Sharp Picks V10")
+    st.title("Sharp Picks CFB")
 with col2:
-    season = st.selectbox("Season", [2025, 2024, 2023, 2022], index=0, label_visibility="collapsed")
+    # Show current selection as a nice display
+    if auto_season_type == "postseason":
+        period_display = f"🏆 Bowl Games {auto_season}"
+    else:
+        period_display = f"🏈 Week {auto_week}, {auto_season}"
+    st.markdown(f"<div style='padding-top: 12px; font-size: 1.1rem; color: #B4C6DC;'>{period_display}</div>", unsafe_allow_html=True)
 with col3:
-    season_type = st.selectbox("Type", ["regular", "postseason"], index=1, label_visibility="collapsed",
-                               format_func=lambda x: "Bowl Games" if x == "postseason" else "Regular")
-with col4:
-    week = st.number_input("Week", min_value=1, max_value=20, value=1, label_visibility="collapsed")
-with col5:
     if 'bankroll' not in st.session_state:
         st.session_state.bankroll = 1000
-    bankroll = st.number_input("Bankroll", min_value=100, max_value=100000,
+    bankroll = st.number_input("💰 Bankroll ($)", min_value=100, max_value=100000,
                                value=st.session_state.bankroll, step=100,
-                               label_visibility="collapsed", format="%d")
+                               format="%d")
     st.session_state.bankroll = bankroll
+
+# Use auto-detected values
+season = auto_season
+season_type = auto_season_type
+week = auto_week
+
+# Advanced settings expander for manual override
+with st.expander("⚙️ Change Season/Week", expanded=False):
+    adv_col1, adv_col2, adv_col3 = st.columns(3)
+    with adv_col1:
+        season = st.selectbox("Season", [2025, 2024, 2023, 2022],
+                             index=[2025, 2024, 2023, 2022].index(auto_season),
+                             key="manual_season")
+    with adv_col2:
+        season_type = st.selectbox("Type", ["regular", "postseason"],
+                                   index=0 if auto_season_type == "regular" else 1,
+                                   format_func=lambda x: "Bowl Games" if x == "postseason" else "Regular Season",
+                                   key="manual_type")
+    with adv_col3:
+        week = st.number_input("Week", min_value=0, max_value=20, value=auto_week, key="manual_week")
 
 # Model info
 model, model_file = load_spread_error_model()
@@ -1536,26 +1709,55 @@ if not games:
         st.warning(f"No games found for Week {week}, {season}")
     st.stop()
 
+# =============================================================================
+# FILTER GAMES BY COMPLETION STATUS
+# =============================================================================
+# CFBD API returns 'completed' field - separate upcoming from finished games
+upcoming_games = [g for g in games if not g.get('completed', False)]
+completed_games = [g for g in games if g.get('completed', False)]
+
+# Show game status counts
+total_games = len(games)
+upcoming_count = len(upcoming_games)
+completed_count = len(completed_games)
+
 lines_dict = build_lines_dict(betting_lines)
 
-# Show lines status
+# Show lines status with game counts
 if betting_lines:
-    st.caption(f"📊 Live lines: {len(lines_dict)} games with spreads | Auto-updates every 60s")
+    status_parts = [f"📊 {len(lines_dict)} games with lines"]
+    if upcoming_count > 0:
+        status_parts.append(f"🎯 {upcoming_count} upcoming")
+    if completed_count > 0:
+        status_parts.append(f"✅ {completed_count} completed")
+    st.caption(" | ".join(status_parts))
 else:
     st.warning("⚠️ No betting lines available from API - check connection")
 
+# Generate predictions for UPCOMING games only (for picks tabs)
 with st.spinner("Generating spread error predictions..."):
     df_predictions = generate_spread_error_predictions(
-        games, lines_dict, model, history_df, season, week, bankroll,
+        upcoming_games if upcoming_games else games,  # Fall back to all if no upcoming
+        lines_dict, model, history_df, season, week, bankroll,
         quantile_model=quantile_model
     )
 
-# Generate totals predictions if model is available
+# Generate predictions for COMPLETED games (for results tab)
+df_completed_predictions = pd.DataFrame()
+if completed_games:
+    with st.spinner("Loading historical results..."):
+        df_completed_predictions = generate_spread_error_predictions(
+            completed_games, lines_dict, model, history_df, season, week, bankroll,
+            quantile_model=quantile_model
+        )
+
+# Generate totals predictions if model is available (UPCOMING only)
 df_totals = pd.DataFrame()
 if totals_model:
     with st.spinner("Generating totals predictions..."):
         df_totals = generate_totals_predictions(
-            games, lines_dict, totals_model, history_df, bankroll
+            upcoming_games if upcoming_games else games,
+            lines_dict, totals_model, history_df, bankroll
         )
 
 if df_predictions.empty:
@@ -1600,9 +1802,9 @@ else:
     all_totals = pd.DataFrame()
 
 # =============================================================================
-# TABS FOR SPREAD AND TOTALS
+# TABS FOR SPREAD, TOTALS, AND RESULTS
 # =============================================================================
-spread_tab, totals_tab = st.tabs(["🏈 Spread Picks", "📊 Totals (O/U) Picks"])
+spread_tab, totals_tab, results_tab = st.tabs(["🏈 Spread Picks", "📊 Totals (O/U)", "📜 Results"])
 
 with spread_tab:
     hero_bets = all_bets.head(2)
@@ -1803,3 +2005,101 @@ with totals_tab:
                     use_container_width=True,
                     hide_index=True
                 )
+
+# =============================================================================
+# RESULTS TAB - Historical Accuracy
+# =============================================================================
+with results_tab:
+    st.markdown('<div class="hero-title">COMPLETED GAMES - Results & Accuracy</div>', unsafe_allow_html=True)
+
+    if completed_games and not df_completed_predictions.empty:
+        # Build results data with actual scores
+        results_data = []
+        for game in completed_games:
+            home = game.get('homeTeam', '')
+            away = game.get('awayTeam', '')
+            home_score = game.get('homePoints', 0) or 0
+            away_score = game.get('awayPoints', 0) or 0
+
+            # Find the prediction for this game
+            game_pred = df_completed_predictions[
+                (df_completed_predictions['Home'] == home) |
+                (df_completed_predictions['Away'] == away)
+            ]
+
+            if game_pred.empty:
+                continue
+
+            pred_row = game_pred.iloc[0]
+
+            # Calculate actual result vs prediction
+            actual_margin = home_score - away_score  # Positive = home won by X
+            vegas_spread = pred_row.get('vegas_spread', 0)
+            predicted_error = pred_row.get('spread_error', 0)
+
+            # Determine if our pick was correct
+            signal = pred_row.get('Signal', '')
+            team_bet = pred_row.get('team_to_bet', '')
+            spread_to_bet = pred_row.get('spread_to_bet', 0)
+
+            # ATS result (Against The Spread)
+            if signal == 'BUY':
+                # We bet on home team to cover
+                ats_result = actual_margin + vegas_spread  # If positive, home covered
+                pick_won = ats_result > 0
+            else:
+                # We bet on away team to cover
+                ats_result = -actual_margin - vegas_spread  # If positive, away covered
+                pick_won = ats_result > 0
+
+            results_data.append({
+                'Game': f"{away} @ {home}",
+                'Score': f"{away_score} - {home_score}",
+                'Pick': f"{signal} {team_bet} {spread_to_bet:+.1f}",
+                'Result': '✅ WIN' if pick_won else '❌ LOSS',
+                'Margin': f"{ats_result:+.1f}",
+                'Confidence': pred_row.get('confidence_tier', 'N/A'),
+                'Bet Size': f"${pred_row.get('bet_size', 0):.0f}",
+            })
+
+        if results_data:
+            df_results = pd.DataFrame(results_data)
+
+            # Summary stats
+            wins = sum(1 for r in results_data if '✅' in r['Result'])
+            losses = len(results_data) - wins
+            win_rate = wins / len(results_data) * 100 if results_data else 0
+
+            # Display summary metrics
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Games", len(results_data))
+            with col2:
+                st.metric("Record", f"{wins}-{losses}")
+            with col3:
+                st.metric("Win Rate", f"{win_rate:.1f}%")
+            with col4:
+                # Color code win rate
+                if win_rate >= 55:
+                    st.metric("Status", "📈 Profitable")
+                elif win_rate >= 50:
+                    st.metric("Status", "📊 Break Even")
+                else:
+                    st.metric("Status", "📉 Review")
+
+            st.markdown("---")
+
+            # Results table
+            st.dataframe(
+                df_results,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    'Result': st.column_config.TextColumn(width='small'),
+                    'Margin': st.column_config.TextColumn(width='small'),
+                }
+            )
+        else:
+            st.info("No matched predictions found for completed games.")
+    else:
+        st.info(f"No completed games yet for this week. Check back after games finish!")

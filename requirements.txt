@@ -14,6 +14,7 @@ optuna>=3.5.0
 
 # API Client
 cfbd>=4.5.0
+requests>=2.31.0
 
 # Web Framework
 streamlit>=1.29.0

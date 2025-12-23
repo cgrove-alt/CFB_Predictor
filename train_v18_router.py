@@ -291,7 +291,7 @@ def train_meta_learner(df, experts, feature_cols):
 
     # Train Bayesian meta-learner
     meta_learner = BayesianRidge(
-        n_iter=1000,
+        max_iter=1000,
         compute_score=True
     )
     meta_learner.fit(X_meta, y_meta)

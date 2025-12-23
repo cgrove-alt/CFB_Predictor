@@ -364,36 +364,70 @@ def get_api_headers():
 # =============================================================================
 # LOAD MODEL AND DATA
 # =============================================================================
+class V18StackingWrapper:
+    """Wrapper to make V18 stacking ensemble work like a simple sklearn model."""
+
+    EXPECTED_FEATURES = 58  # V18 was trained on 58 features (V15 only, no V16 uncertainty)
+
+    def __init__(self, model_dict):
+        self.base_models = model_dict['base_models']
+        self.meta_learner = model_dict['meta_learner']
+        self.model_names = model_dict.get('model_names', list(self.base_models.keys()))
+
+    def predict(self, X):
+        """Generate predictions using stacking ensemble."""
+        import numpy as np
+
+        # Validate feature dimensions
+        actual_features = X.shape[1] if hasattr(X, 'shape') else len(X[0])
+        if actual_features != self.EXPECTED_FEATURES:
+            raise ValueError(
+                f"V18 model expects {self.EXPECTED_FEATURES} features, got {actual_features}. "
+                f"Call calculate_safe_features_for_game() with use_v16=False for V18 compatibility."
+            )
+
+        # Get predictions from each base model
+        base_preds = []
+        for name in self.model_names:
+            if name in self.base_models:
+                pred = self.base_models[name].predict(X)
+                base_preds.append(pred)
+
+        if not base_preds:
+            return np.zeros(len(X))
+
+        # Stack predictions for meta-learner
+        X_meta = np.column_stack(base_preds)
+
+        # Add original features for passthrough (if meta-learner expects it)
+        try:
+            # Try with passthrough features
+            if hasattr(X, 'values'):
+                X_meta_full = np.hstack([X_meta, X.values])
+            else:
+                X_meta_full = np.hstack([X_meta, X])
+            return self.meta_learner.predict(X_meta_full)
+        except Exception:
+            # Fall back to just base predictions
+            return self.meta_learner.predict(X_meta)
+
+
 @st.cache_resource
 def load_spread_error_model():
-    """Load the V16 self-learning spread error model (68 features).
+    """Load V18 stacking ensemble model (58 features).
 
-    V16 improvements:
-    - 10 uncertainty features learned from SHAP error analysis
-    - Wins 11/15 weeks vs V15 with 0.4% lower MAE
-    - Falls back to V15 if V16 not available
+    V18 improvements:
+    - Stacking ensemble with XGBoost, HistGradientBoosting, CatBoost
+    - MAE = 9.34 (2.57 points better than Vegas baseline)
     """
-    model_files = [
-        'cfb_spread_error_v16.pkl',  # V16 with 68 features (self-learning)
-        'cfb_spread_error_v15.pkl',  # V15 with 58 features (fallback)
-        'cfb_spread_error_v14.pkl',
-        'cfb_spread_error_v13.pkl',
-        'cfb_spread_error.pkl',
-    ]
-
-    for model_file in model_files:
-        try:
-            model = joblib.load(model_file)
-            logger.info(f"Loaded spread error model from {model_file}")
-            return model, model_file
-        except FileNotFoundError:
-            continue
-        except Exception as e:
-            logger.warning(f"Error loading {model_file}: {e}")
-            continue
-
-    st.error("No spread error model found! Run train_v15_high_confidence.py first.")
-    return None, None
+    try:
+        raw_model = joblib.load('cfb_v18_stacking.pkl')
+        model = V18StackingWrapper(raw_model)
+        logger.info("Loaded V18 stacking ensemble")
+        return model, 'cfb_v18_stacking.pkl'
+    except Exception as e:
+        st.error(f"Failed to load V18 model: {e}")
+        return None, None
 
 
 @st.cache_resource
@@ -420,6 +454,42 @@ def load_totals_model():
 
 
 @st.cache_resource
+def load_quantile_model():
+    """Load V17 quantile model for prediction intervals.
+
+    Returns dict with keys 0.1, 0.25, 0.5, 0.75, 0.9 for quantile regressors.
+    Used to generate 80% prediction intervals for bet selection.
+    """
+    model_files = [
+        'cfb_spread_error_v17_quantile.pkl',
+    ]
+
+    for model_file in model_files:
+        try:
+            model = joblib.load(model_file)
+            logger.info(f"Loaded quantile model from {model_file}")
+            return model, model_file
+        except FileNotFoundError:
+            continue
+        except Exception as e:
+            logger.warning(f"Error loading quantile model {model_file}: {e}")
+            continue
+
+    logger.warning("No quantile model found - prediction intervals disabled")
+    return None, None
+
+
+@st.cache_resource
+def load_quantile_config():
+    """Load quantile model config with feature list."""
+    try:
+        config = joblib.load('cfb_v17_quantile_config.pkl')
+        return config
+    except:
+        return None
+
+
+@st.cache_resource
 def load_totals_config():
     """Load the totals model config with feature list."""
     config_files = ['cfb_totals_v2_config.pkl']
@@ -435,16 +505,13 @@ def load_totals_config():
 
 @st.cache_resource
 def load_model_config():
-    """Load the model config with feature list (V16 first, then V15)."""
-    config_files = ['cfb_v16_config.pkl', 'cfb_v15_config.pkl', 'cfb_v14_config.pkl']
-    for config_file in config_files:
-        try:
-            config = joblib.load(config_file)
-            logger.info(f"Loaded config from {config_file} ({len(config.get('features', []))} features)")
-            return config
-        except:
-            continue
-    return {'features': SAFE_FEATURES}
+    """Load V18 model config (58 features)."""
+    try:
+        config = joblib.load('cfb_v18_stacking_config.pkl')
+        logger.info(f"Loaded V18 config ({len(config.get('features', []))} features)")
+        return config
+    except:
+        return {'features': SAFE_FEATURES}
 
 
 @st.cache_data(ttl=300)
@@ -728,8 +795,14 @@ def calculate_safe_features_for_game(home, away, history_df, season, week, vegas
 # =============================================================================
 # KELLY CRITERION
 # =============================================================================
-def kelly_bet_size(spread_error, bankroll=1000, odds=-110):
-    """Calculate bet size based on predicted spread error."""
+def kelly_bet_size(spread_error, bankroll=1000, odds=-110,
+                   interval_width=None, interval_crosses_zero=True):
+    """Calculate bet size based on predicted spread error with interval adjustment.
+
+    V18 improvement: Win probability now adjusts based on quantile interval:
+    - BOOST: If interval doesn't cross zero (high certainty), increase win_prob
+    - PENALIZE: If interval is very wide (low certainty), decrease win_prob
+    """
     # Spread error magnitude indicates edge
     edge = abs(spread_error) / 100  # Convert to decimal
 
@@ -737,9 +810,22 @@ def kelly_bet_size(spread_error, bankroll=1000, odds=-110):
     decimal_odds = 1 + (100 / abs(odds)) if odds < 0 else 1 + (odds / 100)
     b = decimal_odds - 1
 
-    # Estimate win probability based on spread error
-    # Larger error = higher confidence
+    # Base probability from spread error
     base_prob = 0.5 + (abs(spread_error) / 50)  # Scale: 3pt error = 56%, 5pt = 60%
+
+    # V18: Dynamic adjustment based on quantile intervals
+    if interval_width is not None:
+        # BOOST if interval doesn't cross zero (high certainty)
+        if not interval_crosses_zero:
+            # Tighter interval = more confidence boost (up to +5%)
+            certainty_boost = max(0, 0.05 - (interval_width / 300))
+            base_prob += certainty_boost
+
+        # PENALIZE if interval is very wide (low certainty)
+        if interval_width > 20:
+            uncertainty_penalty = min(0.05, (interval_width - 20) / 200)
+            base_prob -= uncertainty_penalty
+
     win_prob = min(0.75, max(0.52, base_prob))
 
     q = 1 - win_prob
@@ -752,7 +838,8 @@ def kelly_bet_size(spread_error, bankroll=1000, odds=-110):
         'bet_size': round(bet_size, 2),
         'kelly_fraction': kelly_fraction,
         'win_prob': win_prob,
-        'edge': edge
+        'edge': edge,
+        'interval_adjusted': interval_width is not None
     }
 
 
@@ -778,7 +865,11 @@ def get_confidence_tier(spread_error):
 def fetch_schedule(season, week, season_type='regular'):
     """Fetch game schedule."""
     try:
-        url = f"{CFBD_BASE_URL}/games?year={season}&week={week}&seasonType={season_type}"
+        # Postseason (Bowl Games) doesn't use week parameter
+        if season_type == 'postseason':
+            url = f"{CFBD_BASE_URL}/games?year={season}&seasonType={season_type}"
+        else:
+            url = f"{CFBD_BASE_URL}/games?year={season}&week={week}&seasonType={season_type}"
         resp = requests.get(url, headers=get_api_headers())
         if resp.status_code == 200:
             return resp.json()
@@ -792,7 +883,11 @@ def fetch_schedule(season, week, season_type='regular'):
 def fetch_lines(season, week, season_type='regular'):
     """Fetch betting lines from CFBD API."""
     try:
-        url = f"{CFBD_BASE_URL}/lines?year={season}&week={week}&seasonType={season_type}"
+        # Postseason (Bowl Games) doesn't use week parameter
+        if season_type == 'postseason':
+            url = f"{CFBD_BASE_URL}/lines?year={season}&seasonType={season_type}"
+        else:
+            url = f"{CFBD_BASE_URL}/lines?year={season}&week={week}&seasonType={season_type}"
         resp = requests.get(url, headers=get_api_headers(), timeout=10)
         if resp.status_code == 200:
             data = resp.json()
@@ -860,9 +955,17 @@ def build_lines_dict(betting_lines):
 # =============================================================================
 # GENERATE PREDICTIONS
 # =============================================================================
-def generate_spread_error_predictions(games, lines_dict, model, history_df, season, week, bankroll):
-    """Generate predictions using spread error approach."""
+def generate_spread_error_predictions(games, lines_dict, model, history_df, season, week, bankroll, quantile_model=None):
+    """Generate predictions using spread error approach with optional prediction intervals.
+
+    Args:
+        quantile_model: Optional V17 quantile model for 80% prediction intervals
+    """
     predictions = []
+
+    # Clear any previous prediction errors
+    if 'prediction_error' in st.session_state:
+        del st.session_state['prediction_error']
 
     for game in games:
         try:
@@ -873,13 +976,34 @@ def generate_spread_error_predictions(games, lines_dict, model, history_df, seas
             vegas_spread = lines_dict[home]['spread_current']
             line_movement = lines_dict[home]['line_movement']
 
-            # Calculate safe features
+            # Calculate safe features - V18 uses 58 features
             features = calculate_safe_features_for_game(
-                home, away, history_df, season, week, vegas_spread, line_movement
+                home, away, history_df, season, week, vegas_spread, line_movement,
+                use_v16=False
             )
 
             # Predict spread error
             pred_spread_error = model.predict(features)[0]
+
+            # Get prediction intervals from quantile model if available
+            lower_bound = None
+            upper_bound = None
+            interval_width = None
+            interval_crosses_zero = True  # Default to True (uncertain)
+
+            if quantile_model is not None:
+                try:
+                    # Get 10th and 90th percentile for 80% interval
+                    q10 = quantile_model[0.1].predict(features)[0]
+                    q90 = quantile_model[0.9].predict(features)[0]
+                    lower_bound = q10
+                    upper_bound = q90
+                    interval_width = q90 - q10
+
+                    # Check if interval crosses zero (uncertain prediction)
+                    interval_crosses_zero = (q10 < 0) and (q90 > 0)
+                except Exception as e:
+                    logger.warning(f"Error getting quantile prediction: {e}")
 
             # Determine signal - always assign BUY or FADE (no more PASS filtering)
             if pred_spread_error > 0:
@@ -895,13 +1019,30 @@ def generate_spread_error_predictions(games, lines_dict, model, history_df, seas
                 opponent = home
                 spread_to_bet = -vegas_spread
 
-            # Calculate bet size and win probability
-            kelly_result = kelly_bet_size(pred_spread_error, bankroll)
+            # Calculate bet size and win probability (V18: now uses interval data)
+            kelly_result = kelly_bet_size(
+                pred_spread_error,
+                bankroll,
+                interval_width=interval_width,
+                interval_crosses_zero=interval_crosses_zero
+            )
             bet_size = kelly_result['bet_size']
             win_prob = kelly_result['win_prob']
 
-            # Get confidence tier
+            # Get confidence tier (enhanced with interval info)
             confidence_tier, confidence_class, confidence_emoji = get_confidence_tier(pred_spread_error)
+
+            # Boost confidence if interval doesn't cross zero
+            if not interval_crosses_zero and interval_width is not None:
+                if interval_width < 15:  # Tight interval
+                    if confidence_tier == 'MEDIUM':
+                        confidence_tier = 'MEDIUM-HIGH'
+                        confidence_class = 'confidence-medium-high'
+                        confidence_emoji = '✅'
+                    elif confidence_tier == 'MEDIUM-HIGH':
+                        confidence_tier = 'HIGH'
+                        confidence_class = 'confidence-high'
+                        confidence_emoji = '🔥'
 
             predictions.append({
                 'Home': home,
@@ -919,9 +1060,16 @@ def generate_spread_error_predictions(games, lines_dict, model, history_df, seas
                 'confidence_tier': confidence_tier,
                 'confidence_class': confidence_class,
                 'confidence_emoji': confidence_emoji,
+                'lower_bound': lower_bound,
+                'upper_bound': upper_bound,
+                'interval_width': interval_width,
+                'interval_crosses_zero': interval_crosses_zero,
             })
         except Exception as e:
             logger.error(f"Error predicting {game.get('awayTeam', '?')} @ {game.get('homeTeam', '?')}: {e}")
+            # Track first error to surface to user
+            if 'prediction_error' not in st.session_state:
+                st.session_state['prediction_error'] = str(e)
 
     return pd.DataFrame(predictions)
 
@@ -1127,7 +1275,7 @@ def render_totals_card(bet, is_hero=False):
 # BET CARD COMPONENT
 # =============================================================================
 def render_bet_card(bet, is_hero=False):
-    """Render a styled bet card."""
+    """Render a styled bet card with optional prediction interval."""
     signal_class = "buy" if bet['Signal'] == 'BUY' else "fade"
 
     # Get confidence tier from bet data (always show badge)
@@ -1142,6 +1290,22 @@ def render_bet_card(bet, is_hero=False):
     instruction_class = "bet-instruction-hero" if is_hero else "bet-instruction"
     amount_class = "bet-amount-hero" if is_hero else "bet-amount"
 
+    # Build interval display if available
+    interval_html = ""
+    lower = bet.get('lower_bound')
+    upper = bet.get('upper_bound')
+    crosses_zero = bet.get('interval_crosses_zero', True)
+
+    if lower is not None and upper is not None:
+        # Color based on whether interval crosses zero
+        if not crosses_zero:
+            interval_color = "#28a745"  # Green - confident
+            interval_icon = "✓"
+        else:
+            interval_color = "#ffc107"  # Amber - uncertain
+            interval_icon = "~"
+        interval_html = f'<div class="interval" style="color: {interval_color}; font-size: 0.85rem;">{interval_icon} 80% range: {lower:+.1f} to {upper:+.1f}</div>'
+
     html = f"""
     <div class="bet-card {signal_class}">
         {conf_badge}
@@ -1150,6 +1314,7 @@ def render_bet_card(bet, is_hero=False):
         <div class="{amount_class}">${bet['bet_size']:.0f}</div>
         <div class="win-prob">{bet['win_prob']*100:.0f}% Est. Win Probability</div>
         <div class="spread-error">Predicted edge: {abs(bet['spread_error']):.1f} pts vs Vegas</div>
+        {interval_html}
     </div>
     """
     st.markdown(html, unsafe_allow_html=True)
@@ -1274,11 +1439,14 @@ with col5:
 # Model info
 model, model_file = load_spread_error_model()
 totals_model, totals_model_file = load_totals_model()
+quantile_model, quantile_model_file = load_quantile_model()
 
 if model:
     models_info = f"Spread: {model_file}"
     if totals_model:
         models_info += f" | Totals: {totals_model_file}"
+    if quantile_model:
+        models_info += " | Intervals: V17"
     st.markdown(f"""
     <div class="model-info">
         <span class="model-info-text">
@@ -1378,7 +1546,8 @@ else:
 
 with st.spinner("Generating spread error predictions..."):
     df_predictions = generate_spread_error_predictions(
-        games, lines_dict, model, history_df, season, week, bankroll
+        games, lines_dict, model, history_df, season, week, bankroll,
+        quantile_model=quantile_model
     )
 
 # Generate totals predictions if model is available
@@ -1391,6 +1560,10 @@ if totals_model:
 
 if df_predictions.empty:
     st.warning("No predictions generated.")
+    # Show error details if available
+    if 'prediction_error' in st.session_state:
+        st.error(f"Error: {st.session_state['prediction_error']}")
+        del st.session_state['prediction_error']
     st.stop()
 
 # =============================================================================
@@ -1486,17 +1659,32 @@ with spread_tab:
     # Count high confidence picks
     high_conf_bets = len(all_bets[all_bets['spread_error'].abs() >= 3.0])
 
+    # Count confident intervals (don't cross zero)
+    confident_intervals = 0
+    avg_interval_width = None
+    if 'interval_crosses_zero' in all_bets.columns:
+        confident_intervals = len(all_bets[all_bets['interval_crosses_zero'] == False])
+        if 'interval_width' in all_bets.columns and all_bets['interval_width'].notna().any():
+            avg_interval_width = all_bets['interval_width'].mean()
+
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
         st.metric("Total Games", total_bets)
     with col2:
-        st.metric("High Confidence", high_conf_bets)
+        # Show confident intervals if available, else high confidence
+        if confident_intervals > 0:
+            st.metric("Confident Picks", f"{confident_intervals} ✓", help="Bets where 80% prediction interval doesn't cross zero")
+        else:
+            st.metric("High Confidence", high_conf_bets)
     with col3:
         st.metric("Total Wagered", f"${total_wagered:.0f}")
     with col4:
         st.metric("Avg Edge", f"{avg_edge:.1f} pts")
     with col5:
-        st.metric("Best Edge", f"{best_edge:.1f} pts")
+        if avg_interval_width is not None:
+            st.metric("Avg Interval", f"±{avg_interval_width/2:.1f} pts", help="Average 80% prediction interval half-width")
+        else:
+            st.metric("Best Edge", f"{best_edge:.1f} pts")
 
     # =============================================================================
     # COLLAPSED SECTIONS
@@ -1509,14 +1697,24 @@ with spread_tab:
         """)
 
         if not df_predictions.empty:
+            # Build column list based on what's available
+            display_cols = ['Game', 'Signal', 'confidence_tier', 'vegas_spread', 'spread_error', 'win_prob', 'bet_size']
+            rename_map = {
+                'confidence_tier': 'Confidence',
+                'vegas_spread': 'Vegas',
+                'spread_error': 'Pred Error',
+                'win_prob': 'Est Win %',
+                'bet_size': 'Kelly $',
+            }
+
+            # Add interval columns if available
+            if 'lower_bound' in df_predictions.columns and df_predictions['lower_bound'].notna().any():
+                display_cols.extend(['lower_bound', 'upper_bound'])
+                rename_map['lower_bound'] = 'Q10'
+                rename_map['upper_bound'] = 'Q90'
+
             st.dataframe(
-                df_predictions[['Game', 'Signal', 'confidence_tier', 'vegas_spread', 'spread_error', 'win_prob', 'bet_size']].rename(columns={
-                    'confidence_tier': 'Confidence',
-                    'vegas_spread': 'Vegas',
-                    'spread_error': 'Pred Error',
-                    'win_prob': 'Est Win %',
-                    'bet_size': 'Kelly $',
-                }),
+                df_predictions[display_cols].rename(columns=rename_map),
                 use_container_width=True,
                 hide_index=True
             )

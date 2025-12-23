@@ -29,14 +29,6 @@ env/
 *.swo
 *~
 
-# Model files (large)
-*.pkl
-*.joblib
-*.model
-
-# Data files (large)
-*.csv
-
 # Logs
 logs/
 *.log

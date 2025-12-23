@@ -1,0 +1,310 @@
+game,week,prediction_error,predicted,actual,top_feature_1,shap_1,top_feature_2,shap_2,top_feature_3,shap_3,top_feature_4,shap_4,top_feature_5,shap_5
+Incarnate Word @ Nicholls,1,23.451303005218502,4.048697,27.5,elo_vs_spread,4.2879853,matchup_efficiency,-1.3521492,hfa_diff,-0.9303333,elo_diff,0.4718289,home_last5_score_avg,0.45166865
+Idaho State @ UNLV,1,18.037862300872803,-5.4621377,-23.5,elo_vs_spread,-4.7104883,line_movement,-2.461277,home_team_hfa,1.4839197,elo_diff,0.6733386,home_pregame_elo,-0.62734914
+Tarleton State @ Portland State,1,23.934872210025787,-0.5651278,-24.5,elo_vs_spread,3.7861028,home_team_hfa,-2.526231,matchup_efficiency,-2.032656,hfa_diff,-1.6811833,expected_total,-0.53374535
+Mercyhurst @ Youngstown State,1,15.609891295433044,0.6098913,-15.0,elo_vs_spread,-3.08593,home_team_hfa,1.6872157,elo_diff,0.67846346,hfa_diff,0.5991758,pass_efficiency_diff,0.49004656
+Lindenwood @ St. Thomas (MN),1,24.448405265808105,4.0515947,28.5,elo_vs_spread,2.1617744,home_team_hfa,1.5250043,matchup_efficiency,-1.0286862,elo_diff,0.43258008,ats_diff,-0.38183042
+West Georgia @ Samford,1,35.58591985702515,-1.9140801,-37.5,hfa_diff,-1.4120178,matchup_efficiency,-1.2127306,elo_vs_spread,-1.1877838,home_team_hfa,-0.53053653,pass_efficiency_diff,0.4239336
+Alcorn State @ Northwestern State,1,20.51686617732048,-0.016866177,20.5,home_team_hfa,-3.8281412,elo_vs_spread,2.4544225,home_last5_score_avg,1.681702,matchup_efficiency,-1.5833311,hfa_diff,-1.1471729
+New Haven @ Marist,1,25.00783920288086,-4.507839,20.5,home_team_hfa,-3.5547457,matchup_efficiency,-1.6918234,away_last5_defense_avg,-1.2662874,hfa_diff,-1.1733476,elo_vs_spread,1.131549
+Georgetown @ Davidson,1,41.229180335998535,7.7291803,-33.5,hfa_diff,3.555709,elo_vs_spread,2.9790633,home_team_hfa,1.1781969,matchup_efficiency,-0.61541903,elo_diff,0.47231093
+Fordham @ Boston College,1,17.447492122650146,3.5525079,21.0,matchup_efficiency,13.118982,elo_vs_spread,-4.3520746,home_comp_def_ppa,1.1766224,home_team_hfa,-0.9045504,large_favorite,-0.60633796
+South Dakota @ Iowa State,1,20.32773208618164,11.172268,31.5,matchup_efficiency,11.499767,home_comp_off_ppa,3.3592958,elo_vs_spread,-1.5612868,pass_efficiency_diff,0.9803301,large_favorite,-0.8952909
+New Hampshire @ North Carolina Central,1,21.820650696754456,0.3206507,-21.5,home_team_hfa,1.5822172,home_last5_defense_avg,-0.89007926,matchup_efficiency,-0.59693027,hfa_diff,0.5004168,elo_vs_spread,-0.48763472
+Presbyterian @ Mercer,1,26.253337025642395,-1.246663,-27.5,elo_vs_spread,-2.9840267,home_team_hfa,1.9027032,away_last5_defense_avg,-1.0435271,elo_diff,0.6428383,hfa_diff,0.5127813
+North Dakota @ Kansas State,1,15.836854934692385,-8.663145,-24.5,elo_vs_spread,-4.647836,elo_diff,-2.7654612,home_team_hfa,1.8570073,rest_favorite_interaction,-0.9295413,large_favorite,-0.7580109
+Austin Peay @ Middle Tennessee,1,19.938587188720703,-14.561413,-34.5,matchup_efficiency,-6.574445,elo_vs_spread,-2.2684536,home_team_hfa,-1.3985397,hfa_diff,-1.0834509,large_favorite,-0.82882077
+New Mexico @ Michigan,1,24.15224504470825,4.652245,-19.5,matchup_efficiency,12.1313925,elo_vs_spread,-9.679109,elo_diff,-1.2409837,large_favorite,-1.2148222,home_team_hfa,0.86944914
+Cal Poly @ San Diego,1,32.03718948364258,6.5371895,-25.5,hfa_diff,4.2755017,home_team_hfa,1.4969075,elo_vs_spread,1.493041,matchup_efficiency,-0.5004657,elo_diff,0.43790773
+Idaho State @ Southern Utah,1,15.649274349212646,1.8507257,17.5,home_team_hfa,1.9095185,hfa_diff,0.65827173,matchup_efficiency,-0.64960027,elo_vs_spread,-0.49064368,elo_diff,0.43367404
+California @ Oregon State,1,20.654736638069156,-1.3452634,-22.0,matchup_efficiency,-3.9623811,home_team_hfa,0.92894626,home_comp_rush_ppa,-0.76451427,home_last5_score_avg,0.55532324,pass_efficiency_diff,0.36068302
+New Haven @ Mercyhurst,2,29.78337574005127,-8.283376,21.5,elo_vs_spread,-1.6250528,hfa_diff,-1.5656866,away_last5_defense_avg,-1.3595766,matchup_efficiency,-1.1718606,home_team_hfa,-0.6934041
+Illinois @ Duke,2,20.344809770584103,-3.1551902,-23.5,matchup_efficiency,-3.773396,home_team_hfa,1.4051645,elo_vs_spread,1.2804996,elo_diff,0.5710829,pass_efficiency_diff,-0.4758504
+Liberty @ Jacksonville State,2,24.051154136657715,-8.051154,16.0,matchup_efficiency,-4.883444,elo_diff,-2.1622458,pass_efficiency_diff,-1.6017567,home_team_hfa,1.090875,elo_vs_spread,0.8742374
+UAlbany @ Delaware State,2,17.14251372218132,0.35748628,17.5,home_team_hfa,-3.0551176,elo_vs_spread,2.8225052,matchup_efficiency,-1.5854533,hfa_diff,-0.8763465,home_last5_score_avg,0.52994704
+Chattanooga @ Tennessee Tech,2,25.06263375282288,-2.5626338,22.5,matchup_efficiency,-0.93283236,home_last5_defense_avg,-0.8592804,elo_vs_spread,-0.76013386,home_team_hfa,-0.6391945,pass_efficiency_diff,0.4133156
+Eastern Illinois @ Indiana State,2,27.90997886657715,-7.409979,20.5,home_team_hfa,-3.2553422,matchup_efficiency,-1.508435,hfa_diff,-1.0839014,elo_vs_spread,-0.5881918,home_ats,-0.41512892
+Robert Morris @ Youngstown State,2,20.278388619422916,-0.7783886,19.5,elo_vs_spread,-2.4169629,home_team_hfa,1.4257632,hfa_diff,0.6474976,elo_diff,0.6060008,home_last5_defense_avg,0.5915693
+North Dakota State @ Tennessee State,2,25.08862721920013,1.5886272,-23.5,elo_vs_spread,9.049327,matchup_efficiency,-1.84209,hfa_diff,-1.3459152,away_last5_defense_avg,-1.3100437,expected_total,-0.40537423
+Miami (OH) @ Rutgers,2,25.97180461883545,-13.471805,12.5,matchup_efficiency,-4.2803774,elo_vs_spread,-2.4968317,large_favorite,-1.910557,elo_diff,-1.4351478,hfa_diff,-0.8331233
+Grambling @ Ohio State,2,16.15356171131134,-1.6535617,14.5,matchup_efficiency,10.730778,elo_vs_spread,-10.150128,home_comp_off_ppa,2.2040288,elo_diff,-1.4402931,large_favorite,-1.3739372
+Fresno State @ Oregon State,2,15.60302209854126,5.603022,-10.0,elo_vs_spread,1.8755691,matchup_efficiency,1.5798967,home_team_hfa,1.0602808,elo_efficiency_interaction,0.92963916,home_last5_score_avg,0.77022916
+North Texas @ Western Michigan,2,22.55486011505127,-13.55486,9.0,matchup_efficiency,-11.173768,elo_vs_spread,5.291553,pass_efficiency_diff,-1.7046454,home_comp_def_ppa,-0.69421846,home_last5_score_avg,0.590776
+Lindenwood @ App State,2,20.626200675964355,-3.8737993,-24.5,elo_vs_spread,-4.9898458,home_team_hfa,1.338335,matchup_efficiency,1.1391522,elo_diff,0.6891957,home_comp_off_ppa,-0.5280044
+Oklahoma State @ Oregon,2,15.59455108642578,21.905449,37.5,matchup_efficiency,23.286232,elo_vs_spread,-6.5730376,home_comp_off_ppa,3.0563254,home_team_hfa,1.1171026,elo_diff,-1.1153384
+The Citadel @ Samford,2,31.93992400169373,2.439924,-29.5,matchup_efficiency,-0.94445485,hfa_diff,0.5618853,away_last5_score_avg,0.53718954,home_last5_defense_avg,-0.48396903,elo_vs_spread,-0.48345822
+Davidson @ Elon,2,21.85823774337769,-1.3582377,20.5,elo_vs_spread,-3.9050963,elo_diff,0.6740229,home_last5_defense_avg,0.56660014,home_team_hfa,0.5392245,pass_efficiency_diff,0.41546473
+Campbell @ East Carolina,2,20.181293487548828,2.8187065,23.0,matchup_efficiency,6.0179486,elo_vs_spread,-5.2696886,large_favorite,-0.8431005,home_team_hfa,0.81375563,elo_diff,0.6273981
+Alabama State @ Southern,2,17.91389811038971,1.4138981,-16.5,elo_vs_spread,2.829726,matchup_efficiency,-1.2449312,hfa_diff,-0.585618,elo_diff,0.4204894,away_streak,-0.2727573
+Western Kentucky @ Toledo,2,17.871417999267578,33.371418,15.5,matchup_efficiency,22.487972,elo_vs_spread,3.0292497,home_comp_def_ppa,1.4068177,home_team_hfa,1.091451,large_favorite,0.91933817
+Northern Colorado @ Colorado State,2,21.30046367645264,-9.699536,-31.0,elo_vs_spread,-6.398941,home_team_hfa,-2.3976643,momentum_strength,-0.8752315,away_last5_score_avg,0.42572257,hfa_diff,0.3485473
+South Dakota @ Lamar,2,20.44268274307251,3.5573173,24.0,elo_vs_spread,4.3189754,matchup_efficiency,-1.5272844,hfa_diff,-1.1059204,elo_diff,0.46144754,home_last5_defense_avg,0.41167858
+West Georgia @ Nicholls,2,29.35654652118683,-1.1434535,-30.5,hfa_diff,-1.4536374,matchup_efficiency,-1.2548177,elo_vs_spread,-1.2242097,away_last5_defense_avg,0.9134512,home_team_hfa,-0.5681153
+Akron @ Nebraska,2,19.54115867614746,14.458841,34.0,matchup_efficiency,19.417025,elo_vs_spread,-7.1413813,elo_diff,-1.1437696,home_comp_def_ppa,1.0945295,large_favorite,-1.0035858
+Charleston Southern @ Coastal Carolina,2,18.026791095733643,2.526791,-15.5,matchup_efficiency,4.0759726,elo_vs_spread,-2.0992463,large_favorite,-1.0580487,home_last5_defense_avg,0.73584384,home_comp_off_ppa,-0.6846163
+UL Monroe @ Alabama,2,22.974422454833984,16.025578,39.0,matchup_efficiency,21.242058,elo_vs_spread,-8.047943,home_comp_off_ppa,3.4360337,elo_diff,-1.1543888,home_team_hfa,0.92695385
+Southern Utah @ San Diego,2,19.19395351409912,4.3060465,23.5,elo_vs_spread,4.6578255,home_team_hfa,1.6183602,matchup_efficiency,-1.158357,hfa_diff,0.6679687,home_last5_defense_avg,-0.47036418
+San Diego State @ Washington State,2,19.472074151039124,1.5279258,21.0,elo_diff,-1.401919,matchup_efficiency,1.3811774,home_team_hfa,0.8398722,pass_efficiency_diff,0.60868526,elo_vs_spread,0.5504643
+UC Davis @ Washington,2,15.649057388305664,16.350943,32.0,matchup_efficiency,11.863896,home_comp_off_ppa,3.3874516,elo_vs_spread,-2.9030921,hfa_diff,1.0365914,large_favorite,-1.0009675
+Indiana State @ Indiana,3,19.815423488616943,5.6845765,25.5,matchup_efficiency,16.725733,elo_vs_spread,-11.968939,home_comp_off_ppa,2.8040392,large_favorite,-1.613847,elo_diff,-1.3743302
+Colorado @ Houston,3,23.95843315124512,-11.958433,12.0,matchup_efficiency,-8.465675,away_last5_defense_avg,-0.9629057,home_team_hfa,-0.9247502,pass_efficiency_diff,0.6197947,elo_vs_spread,-0.59382606
+New Mexico @ UCLA,3,23.63631248474121,-16.863688,-40.5,matchup_efficiency,-6.9897466,elo_vs_spread,-3.8391023,elo_diff,-2.7354543,large_favorite,-1.7042298,pass_efficiency_diff,-1.69302
+Central Michigan @ Michigan,3,18.00894069671631,14.491059,32.5,matchup_efficiency,18.260208,elo_vs_spread,-7.1903334,large_favorite,-1.0936564,elo_diff,-1.0901923,home_team_hfa,0.85857993
+Marist @ Wagner,3,17.69147628545761,-0.8085237,-18.5,matchup_efficiency,-0.94886214,home_team_hfa,-0.9361056,elo_vs_spread,-0.93578106,home_last5_defense_avg,0.5730803,hfa_diff,0.5678112
+Davidson @ Tennessee Tech,3,21.20687460899353,-3.7068746,17.5,elo_vs_spread,-5.445449,home_last5_defense_avg,-1.095774,elo_diff,0.8009337,home_team_hfa,-0.79700613,large_favorite,-0.36672223
+Northern Colorado @ South Dakota,3,16.717561960220337,2.217562,-14.5,elo_vs_spread,-3.0277238,home_team_hfa,1.6196494,hfa_diff,0.8025607,elo_diff,0.65091175,home_last5_defense_avg,0.5341116
+USC @ Purdue,3,15.710814476013184,-11.210814,4.5,matchup_efficiency,-19.350506,elo_vs_spread,9.693415,pass_efficiency_diff,-1.8790544,home_team_hfa,-1.6080722,hfa_diff,-0.6767946
+Morgan State @ Toledo,3,21.393824577331543,5.1061754,26.5,matchup_efficiency,6.594472,elo_vs_spread,-4.4906163,home_team_hfa,1.056359,home_comp_def_ppa,0.88644665,elo_diff,0.7931246
+Fordham @ Stony Brook,3,21.7893979549408,-2.789398,19.0,hfa_diff,-1.5107076,matchup_efficiency,-1.2368917,home_team_hfa,-0.8425287,elo_vs_spread,-0.7859262,home_last5_defense_avg,0.3902383
+SMU @ Missouri State,3,21.45956516265869,-9.959565,11.5,matchup_efficiency,-15.960662,elo_vs_spread,9.783207,pass_efficiency_diff,-1.4046129,home_comp_rush_ppa,-1.3066497,streak_diff,-1.17888
+Iowa State @ Arkansas State,3,21.97348403930664,-8.973484,13.0,matchup_efficiency,-14.784885,elo_vs_spread,8.827732,pass_efficiency_diff,-2.0125847,away_last5_defense_avg,0.8042753,hfa_diff,-0.69451815
+Stetson @ Chattanooga,3,30.49625873565674,5.0037413,35.5,elo_vs_spread,-3.4228473,hfa_diff,2.6737895,home_team_hfa,1.7736759,elo_diff,0.6892163,home_last5_defense_avg,0.5936848
+Florida Atlantic @ Florida International,3,16.389519691467285,-8.38952,8.0,matchup_efficiency,-4.759925,home_team_hfa,-2.4297216,elo_diff,-1.3619062,elo_vs_spread,-1.0415375,large_favorite,0.49640587
+Stonehill @ Maine,3,17.65448522567749,-6.345515,-24.0,elo_vs_spread,-3.324028,home_team_hfa,-1.8641359,matchup_efficiency,-0.7236191,hfa_diff,-0.7164107,away_last5_score_avg,0.55886734
+Mississippi Valley State @ SE Louisiana,3,18.087061166763306,2.4129388,20.5,elo_vs_spread,-3.542887,hfa_diff,2.4078684,home_team_hfa,2.2899833,home_last5_score_avg,-0.73487514,elo_diff,0.6956509
+Drake @ South Dakota State,3,16.17104661464691,-1.8289534,-18.0,elo_vs_spread,-3.6146953,home_team_hfa,1.8996695,rest_favorite_interaction,-1.1627011,home_last5_defense_avg,-0.8612561,away_last5_defense_avg,0.8137185
+Morehead State @ Austin Peay,3,24.621323227882385,-1.1213232,23.5,elo_vs_spread,-3.1187449,home_team_hfa,1.8498396,elo_diff,0.68470675,pass_efficiency_diff,0.47040185,hfa_diff,0.46991
+Tarleton State @ Central Arkansas,3,38.16201496124268,5.162015,-33.0,elo_vs_spread,3.952068,ats_diff,1.3348178,hfa_diff,-1.0944493,matchup_efficiency,-1.0591756,home_ats,0.8120532
+New Haven @ UAlbany,3,21.84752130508423,-4.6524787,-26.5,elo_vs_spread,-3.0677545,hfa_diff,-1.3089083,home_team_hfa,-0.76955384,home_last5_defense_avg,0.66500294,matchup_efficiency,-0.62898195
+Southern Illinois @ UT Martin,3,29.072661876678467,5.072662,-24.0,home_team_hfa,1.5994061,elo_vs_spread,1.1732035,matchup_efficiency,-0.8129414,away_last5_defense_avg,0.75117594,elo_diff,0.45985016
+Lamar @ Texas Southern,3,20.59113645553589,6.0911365,-14.5,elo_vs_spread,3.4033434,matchup_efficiency,-1.014911,hfa_diff,0.73415846,home_last5_score_avg,0.46601468,elo_diff,0.45697144
+Murray State @ Georgia State,3,15.558809779584408,0.05880978,-15.5,matchup_efficiency,4.83281,elo_vs_spread,-1.8490729,home_team_hfa,-1.5691636,large_favorite,-1.1173136,pass_efficiency_diff,0.7281706
+East Carolina @ Coastal Carolina,3,29.12872326374054,-1.8712767,-31.0,matchup_efficiency,-7.050479,elo_vs_spread,4.67912,pass_efficiency_diff,-1.3036865,ats_diff,0.9191012,hfa_diff,-0.88926136
+Columbia @ Lafayette,4,20.76141914725304,-0.26141915,20.5,away_last5_defense_avg,-1.0436172,matchup_efficiency,-0.88936174,away_last5_score_avg,0.64206743,hfa_diff,0.6321051,home_last5_defense_avg,-0.5376402
+Syracuse @ Clemson,4,21.69485664367676,-8.805143,-30.5,elo_vs_spread,-4.406599,elo_diff,-2.780322,pass_efficiency_diff,-1.1618518,home_team_hfa,1.1204535,matchup_efficiency,-0.9011525
+Georgetown @ Brown,4,47.37576603889465,2.124234,49.5,home_team_hfa,-1.8305908,matchup_efficiency,-1.2364578,elo_vs_spread,0.89564717,home_ats,0.72932637,home_last5_defense_avg,0.45513797
+Delaware State @ St. Francis (PA),4,26.221079349517822,4.7210793,-21.5,elo_vs_spread,3.4448156,matchup_efficiency,-1.0478987,hfa_diff,0.9861128,home_last5_score_avg,0.6924541,elo_diff,0.58386415
+Harvard @ Stetson,4,17.893316626548767,1.3933166,-16.5,elo_vs_spread,8.354375,home_team_hfa,-2.8956964,hfa_diff,-2.8714924,matchup_efficiency,-2.2541578,home_ats,-2.0748854
+Fordham @ Colgate,4,19.073103189468384,-3.0731032,16.0,hfa_diff,-1.5655371,matchup_efficiency,-1.3034691,home_team_hfa,-1.1755704,elo_vs_spread,-1.0352019,pass_efficiency_diff,0.37026536
+North Alabama @ Illinois State,4,15.793389558792114,0.79338956,-15.0,elo_vs_spread,-1.6086098,hfa_diff,0.64706457,elo_diff,0.5067641,pass_efficiency_diff,0.43298635,large_favorite,-0.36766377
+Mercer @ The Citadel,4,32.36240649223328,-3.1375935,-35.5,home_team_hfa,-3.6355515,matchup_efficiency,-1.625239,elo_vs_spread,1.1160891,hfa_diff,-0.84911066,home_last5_defense_avg,-0.38656208
+Indiana State @ Montana,4,15.549906253814695,6.4500937,22.0,elo_vs_spread,-3.964718,hfa_diff,1.9390516,home_team_hfa,1.8475426,ats_diff,0.67849606,home_last5_score_avg,-0.6705883
+Hampton @ Howard,4,26.356176614761356,3.6438234,30.0,hfa_diff,3.6793113,elo_vs_spread,2.8721359,home_team_hfa,1.6568413,matchup_efficiency,-0.64157474,home_last5_score_avg,0.50467217
+North Carolina Central @ North Carolina A&T,4,27.79635894298553,-1.203641,-29.0,elo_vs_spread,3.305445,home_team_hfa,-3.3001816,matchup_efficiency,-1.7166452,hfa_diff,-1.4905579,away_last5_defense_avg,0.35620573
+Delaware @ Florida International,4,18.219125747680664,-7.7808743,-26.0,matchup_efficiency,-5.151722,home_team_hfa,-2.5470273,elo_vs_spread,-1.6113335,hfa_diff,-0.78931826,pass_efficiency_diff,-0.5721418
+Marshall @ Middle Tennessee,4,18.918328762054443,7.418329,-11.5,elo_vs_spread,4.5027456,elo_efficiency_interaction,1.6637998,matchup_efficiency,-1.5588048,home_team_hfa,-1.4771616,pass_efficiency_diff,-1.1439677
+Southern Illinois @ Southeast Missouri State,4,26.49320697784424,3.993207,-22.5,elo_vs_spread,3.7476528,matchup_efficiency,-1.0291438,away_last5_defense_avg,-1.0118923,home_team_hfa,0.82604414,home_ats,0.53880525
+Coastal Carolina @ South Alabama,4,17.168278694152832,-15.331721,-32.5,matchup_efficiency,-6.8217754,elo_vs_spread,-5.314127,elo_diff,-3.0318415,large_favorite,-1.2244838,home_team_hfa,1.1531503
+Illinois @ Indiana,4,18.69910430908203,27.300896,46.0,matchup_efficiency,24.230322,elo_vs_spread,3.0506651,home_comp_off_ppa,1.934906,large_favorite,1.1913996,home_team_hfa,1.0047077
+Northern Iowa @ Utah Tech,4,19.72967004776001,-2.22967,17.5,home_team_hfa,-3.4419477,elo_vs_spread,2.5196133,matchup_efficiency,-1.7067672,hfa_diff,-0.7482033,away_last5_defense_avg,0.37025687
+Cincinnati @ Kansas,5,16.83127498626709,8.331275,-8.5,matchup_efficiency,6.542271,home_comp_off_ppa,1.3111315,home_team_hfa,1.0106809,large_favorite,0.81989646,elo_diff,-0.8144922
+Notre Dame @ Arkansas,5,16.98086166381836,-20.519138,-37.5,matchup_efficiency,-22.44299,elo_vs_spread,5.500827,line_movement,-2.5011053,pass_efficiency_diff,-1.8702313,ats_diff,1.2358254
+Morehead State @ Presbyterian,5,21.054527282714844,-3.5545273,17.5,elo_vs_spread,-3.5112457,home_streak,1.9943168,home_team_hfa,-1.0319339,elo_diff,0.62909853,home_scoring_trend,-0.5836412
+Howard @ Richmond,5,19.19770860671997,4.1977086,-15.0,home_team_hfa,1.6078699,elo_vs_spread,-1.3864845,home_last5_score_avg,1.0457667,hfa_diff,0.5666687,elo_diff,0.5415348
+Alabama State @ Florida A&M,5,28.17237329483032,4.1723733,-24.0,elo_vs_spread,1.7760698,matchup_efficiency,-0.9352127,home_team_hfa,0.8635196,away_last5_defense_avg,-0.86111724,home_last5_defense_avg,0.6573596
+Princeton @ Lafayette,5,18.300254464149475,1.3002545,-17.0,home_scoring_trend,-1.1062479,matchup_efficiency,-0.7882321,elo_vs_spread,-0.6542388,hfa_diff,0.50193125,pass_efficiency_diff,0.4733926
+Merrimack @ Stony Brook,5,24.5649151802063,-6.564915,18.0,hfa_diff,-1.8981844,away_last5_defense_avg,-1.5282849,momentum_strength,-1.2287816,matchup_efficiency,-1.1846361,home_scoring_trend,-0.9512675
+Hawai'i @ Air Force,5,19.779538869857788,3.7795389,-16.0,matchup_efficiency,1.5949795,elo_diff,-1.4587952,home_comp_off_ppa,0.921755,away_last5_defense_avg,0.7328291,momentum_strength,-0.5740136
+Eastern Washington @ Montana State,5,32.566393315792084,0.43360668,33.0,elo_vs_spread,-2.6252213,home_team_hfa,1.7601837,elo_diff,0.65875363,home_scoring_trend,0.5990317,pass_efficiency_diff,0.54097635
+The Citadel @ Chattanooga,5,34.92630982398987,1.4263098,-33.5,elo_vs_spread,-1.5555367,home_team_hfa,1.1772766,hfa_diff,1.021024,home_last5_score_avg,-0.9119806,home_scoring_trend,-0.8632921
+Brown @ Harvard,5,16.672442138195038,0.82755786,17.5,elo_vs_spread,-1.6726437,home_team_hfa,1.2532461,hfa_diff,0.66289616,elo_diff,0.5481066,pass_efficiency_diff,0.47464782
+South Carolina State @ Charleston Southern,5,16.06638240814209,1.4336176,17.5,home_team_hfa,-3.742376,elo_vs_spread,2.7062204,home_last5_score_avg,1.975329,matchup_efficiency,-1.6339294,hfa_diff,-1.0303532
+Rhode Island @ Western Michigan,5,18.93460512161255,6.565395,25.5,elo_vs_spread,2.194749,matchup_efficiency,2.1005409,home_last5_score_avg,1.3462214,away_streak,1.0942107,elo_efficiency_interaction,1.0786337
+Southeast Missouri State @ UT Martin,5,22.306984901428223,4.693015,27.0,home_team_hfa,1.6608574,matchup_efficiency,-0.8079577,elo_vs_spread,0.79242545,home_last5_score_avg,0.6713227,elo_diff,0.42973977
+Abilene Christian @ Incarnate Word,5,27.055188536643985,1.9448115,29.0,home_team_hfa,1.4051123,home_scoring_trend,-0.88273054,ats_diff,0.7963802,matchup_efficiency,-0.76682794,home_ats,0.6358777
+Jackson State @ Southern,5,17.61352801322937,2.113528,-15.5,elo_vs_spread,3.215223,matchup_efficiency,-1.2878319,away_last5_defense_avg,-1.1139528,hfa_diff,-1.101793,home_last5_score_avg,0.58984935
+Grambling @ Prairie View A&M,5,16.64484131336212,1.3551587,18.0,elo_vs_spread,1.7508188,matchup_efficiency,-1.2243496,hfa_diff,-0.5993217,away_last5_defense_avg,0.43082842,elo_diff,0.36756226
+Memphis @ Florida Atlantic,5,18.74007248878479,3.7400725,-15.0,elo_vs_spread,9.697794,matchup_efficiency,-3.7207417,pass_efficiency_diff,-1.3444465,rest_spread_interaction,1.0966116,away_last5_defense_avg,-0.952233
+Marshall @ Louisiana,5,23.42393493652344,-17.923935,5.5,matchup_efficiency,-13.891904,pass_efficiency_diff,-2.3322482,elo_vs_spread,1.6793942,elo_efficiency_interaction,-0.58544976,home_scoring_trend,-0.45612308
+Cal Poly @ Sacramento State,5,23.638756275177,-2.3612437,-26.0,elo_vs_spread,-2.579014,home_scoring_trend,-0.6511043,elo_diff,0.5090762,hfa_diff,0.4897371,pass_efficiency_diff,0.4662384
+Rhode Island @ Brown,6,24.137516975402832,-2.637517,21.5,elo_vs_spread,4.0289645,home_ats,-1.9709884,matchup_efficiency,-1.7854435,hfa_diff,-1.5717977,home_team_hfa,-1.4978516
+San Diego @ Marist,6,17.1823787689209,-3.6823788,13.5,elo_vs_spread,3.2722151,home_team_hfa,-3.1154747,matchup_efficiency,-1.7074687,hfa_diff,-1.1202898,momentum_strength,0.3361892
+Army @ UAB,6,16.677526473999023,5.1775265,-11.5,elo_vs_spread,5.448699,matchup_efficiency,-2.4912965,hfa_diff,-0.8051474,pass_efficiency_diff,0.5084776,away_last5_score_avg,-0.40647113
+Ohio @ Ball State,6,23.68297243118286,-3.6829724,20.0,elo_vs_spread,9.192538,matchup_efficiency,-7.139722,home_scoring_trend,-2.1150348,pass_efficiency_diff,-1.4480876,hfa_diff,-0.99589413
+Richmond @ Bucknell,6,17.607797622680664,-7.6077976,10.0,home_team_hfa,-3.2123225,hfa_diff,-1.7876159,away_last5_defense_avg,-1.6330498,matchup_efficiency,-1.5046595,elo_vs_spread,1.4033377
+Villanova @ New Hampshire,6,25.79042649269104,1.2904265,-24.5,elo_vs_spread,4.2359467,matchup_efficiency,-1.2088755,hfa_diff,-0.944924,away_last5_defense_avg,0.45812982,elo_diff,0.40333804
+Valparaiso @ Drake,6,21.02139616012573,-5.021396,16.0,elo_vs_spread,-3.7985494,away_scoring_trend,-2.633532,home_team_hfa,-0.647039,elo_diff,0.6089822,home_last5_defense_avg,0.47206935
+Davidson @ Stetson,6,16.330447673797607,-6.8304477,9.5,home_ats,-3.9791114,home_team_hfa,-3.126149,hfa_diff,-2.1137972,matchup_efficiency,-1.8944075,elo_vs_spread,1.1484306
+Campbell @ NC State,6,15.386079788208008,18.88608,3.5,matchup_efficiency,19.222322,elo_vs_spread,-5.1227655,home_comp_off_ppa,3.093274,large_favorite,-0.62184846,home_team_hfa,-0.4954647
+Maine @ Bryant,6,21.80656385421753,-0.69343615,-22.5,home_team_hfa,-1.5519166,home_scoring_trend,-1.2649566,matchup_efficiency,-0.99538463,hfa_diff,0.46808413,away_last5_defense_avg,0.4659788
+Harvard @ Holy Cross,6,25.655479907989506,4.65548,-21.0,elo_vs_spread,3.9973347,matchup_efficiency,-1.2511544,home_last5_score_avg,0.8802441,momentum_strength,0.7198281,home_team_hfa,0.67860997
+Colgate @ Cornell,6,17.099746584892273,-1.4002534,-18.5,home_team_hfa,-3.3666112,matchup_efficiency,-1.50816,elo_vs_spread,1.1096823,home_last5_defense_avg,0.6024462,elo_diff,0.29799506
+North Alabama @ Abilene Christian,6,17.059462308883667,0.4405377,17.5,home_team_hfa,1.5610557,elo_vs_spread,-1.115072,rest_favorite_interaction,-0.99941474,hfa_diff,0.70150846,matchup_efficiency,-0.6970316
+Tennessee State @ Eastern Illinois,6,19.88708209991455,-0.8870821,19.0,home_team_hfa,-1.5870373,matchup_efficiency,-1.2299138,away_last5_score_avg,0.40450606,home_last5_defense_avg,-0.39832056,elo_vs_spread,-0.37835148
+North Carolina A&T @ William & Mary,6,22.333787441253666,5.8337874,-16.5,elo_vs_spread,-3.0912056,hfa_diff,2.070425,home_team_hfa,1.9087564,elo_diff,0.59642816,home_last5_score_avg,-0.5500609
+Virginia @ Louisville,6,18.12650489807129,8.626505,-9.5,matchup_efficiency,5.864215,home_streak,1.3431933,large_favorite,0.94018334,home_team_hfa,0.88435596,elo_diff,-0.8235618
+Stony Brook @ UAlbany,6,30.00294232368469,2.0029423,-28.0,elo_vs_spread,2.5852509,matchup_efficiency,-1.1471446,hfa_diff,0.7059542,home_last5_score_avg,0.56681824,elo_diff,0.5647107
+Jackson State @ Alabama A&M,6,19.418882846832275,0.91888285,-18.5,elo_vs_spread,4.1858964,matchup_efficiency,-1.4609503,hfa_diff,-1.2878987,away_last5_defense_avg,-1.2245854,home_last5_defense_avg,0.5600851
+Montana State @ Northern Arizona,6,26.347003936767575,9.847004,-16.5,elo_vs_spread,3.4869044,home_streak,1.754682,matchup_efficiency,-1.0364175,hfa_diff,-0.9920747,home_scoring_trend,0.6037771
+North Dakota @ Northern Iowa,6,17.095152378082275,4.0951524,-13.0,elo_vs_spread,4.3858395,matchup_efficiency,-1.4519067,hfa_diff,-0.93673617,elo_diff,0.49485466,away_last5_defense_avg,0.37409195
+Arkansas-Pine Bluff @ Texas Southern,6,38.59744530916214,-0.5974453,38.0,matchup_efficiency,-0.8754023,elo_vs_spread,-0.7841775,hfa_diff,0.7041353,home_last5_score_avg,0.52840763,pass_efficiency_diff,0.42911366
+East Texas A&M @ Northwestern State,6,23.014166735112667,0.014166735,-23.0,home_team_hfa,-3.78138,elo_vs_spread,1.9150293,matchup_efficiency,-1.544399,momentum_strength,-0.61456734,home_last5_score_avg,0.5678241
+Tulsa @ Memphis,6,24.72807645797729,-7.7280765,17.0,elo_vs_spread,-9.409707,matchup_efficiency,5.8072615,hfa_diff,1.4618397,elo_diff,-1.1815583,large_favorite,-1.1478249
+Duke @ California,6,18.555713057518005,-1.944287,-20.5,matchup_efficiency,-5.2272253,elo_vs_spread,2.766574,home_last5_defense_avg,-1.0636009,hfa_diff,-0.6934069,pass_efficiency_diff,-0.54638284
+Lehigh @ Columbia,7,17.85692596435547,6.356926,-11.5,elo_vs_spread,4.0598283,hfa_diff,-1.6952558,away_streak,1.2350512,matchup_efficiency,-1.1758239,home_last5_score_avg,1.000625
+Bucknell @ Lafayette,7,29.221316933631897,-1.2213169,28.0,elo_vs_spread,-0.9325396,matchup_efficiency,-0.76577866,hfa_diff,0.67053294,home_team_hfa,-0.6190758,away_last5_defense_avg,0.4434059
+St. Thomas (MN) @ Davidson,7,30.47733163833618,7.9773316,-22.5,elo_vs_spread,5.2123175,home_team_hfa,1.4182624,matchup_efficiency,-1.2861104,home_scoring_trend,-1.0860177,away_last5_defense_avg,0.79780626
+St. Francis (PA) @ Duquesne,7,26.81771850585937,3.6822815,30.5,elo_vs_spread,-1.7392877,streak_diff,1.5036504,home_team_hfa,1.278243,elo_diff,0.60724837,away_last5_defense_avg,0.57812166
+Morehead State @ Stetson,7,17.044649839401245,-3.0446498,14.0,home_ats,-2.7959194,home_team_hfa,-2.762212,matchup_efficiency,-1.8099847,hfa_diff,-1.2459784,elo_vs_spread,1.1926354
+Howard @ Sacred Heart,7,20.852155685424805,-5.3521557,15.5,hfa_diff,-1.9057276,home_scoring_trend,1.6737732,away_last5_defense_avg,-1.3073674,matchup_efficiency,-1.2372584,home_team_hfa,-0.9339716
+Abilene Christian @ West Georgia,7,19.70386838912964,1.2038684,-18.5,home_team_hfa,1.6015708,matchup_efficiency,-0.742895,hfa_diff,0.5055591,elo_vs_spread,-0.4586169,elo_diff,0.43624735
+Furman @ Western Carolina,7,39.01203393936157,2.487966,41.5,home_team_hfa,1.8040682,home_scoring_trend,-1.0348297,matchup_efficiency,-0.71143496,elo_diff,0.43676737,hfa_diff,0.4337478
+Southern @ Bethune-Cookman,7,31.693936824798584,-1.6939368,30.0,hfa_diff,-1.4389205,matchup_efficiency,-1.2356191,home_team_hfa,-0.7809284,home_last5_defense_avg,0.6937193,home_ats,-0.58878654
+North Carolina Central @ Florida A&M,7,30.18303680419922,4.183037,-26.0,away_scoring_trend,-11.476921,elo_vs_spread,3.8864372,matchup_efficiency,-1.1190157,home_team_hfa,0.8053394,elo_diff,0.49755082
+Western Illinois @ UT Martin,7,22.07474136352539,8.574741,-13.5,hfa_diff,1.8696599,home_team_hfa,1.6375545,elo_vs_spread,-1.5044026,away_streak,-0.56149954,elo_diff,0.5222663
+VMI @ East Tennessee State,7,17.916440188884735,0.5835598,18.5,elo_vs_spread,-1.5283607,hfa_diff,0.82774645,home_last5_defense_avg,0.6044028,elo_diff,0.5350845,pass_efficiency_diff,0.43683833
+NC State @ Notre Dame,7,18.708892822265625,-13.208893,5.5,elo_vs_spread,-11.121687,matchup_efficiency,3.193178,large_favorite,-1.2029864,elo_diff,-1.156181,home_team_hfa,0.8861461
+Central Arkansas @ North Alabama,7,22.48333466053009,-1.5166653,-24.0,elo_vs_spread,1.6396339,home_scoring_trend,-1.2735652,matchup_efficiency,-1.1314629,hfa_diff,-0.96362656,momentum_strength,-0.6934342
+Tennessee Tech @ Charleston Southern,7,21.09177875518799,-4.5917788,16.5,elo_vs_spread,7.630952,home_team_hfa,-3.5543032,matchup_efficiency,-2.5360148,away_last5_defense_avg,-1.9578959,hfa_diff,-1.1314609
+Northern Colorado @ Idaho,7,37.37330675125122,2.8733068,-34.5,hfa_diff,3.1463945,elo_vs_spread,-2.7337713,home_team_hfa,1.7676299,elo_diff,0.54765934,home_scoring_trend,0.42841548
+Austin Peay @ Eastern Kentucky,7,20.73661732673645,3.2633827,24.0,elo_vs_spread,3.4407382,matchup_efficiency,-1.202314,hfa_diff,-0.89418006,rest_spread_interaction,0.4760424,home_last5_score_avg,0.40031627
+Clemson @ Boston College,7,16.376672744750977,-0.62332726,-17.0,elo_vs_spread,9.55875,matchup_efficiency,-9.105167,momentum_strength,1.6473806,home_comp_rush_ppa,-0.96967703,pass_efficiency_diff,0.85781616
+Rice @ UTSA,7,15.81753921508789,23.68246,39.5,matchup_efficiency,20.03085,elo_diff,-0.92633706,large_favorite,0.8976726,home_team_hfa,0.8388119,home_last5_defense_avg,0.7472682
+Sacramento State @ Weber State,7,20.98608100414276,1.486081,-19.5,elo_vs_spread,3.3747647,home_ats,1.6659902,matchup_efficiency,-1.2864814,home_scoring_trend,-0.95467263,hfa_diff,-0.79798204
+Troy @ Texas State,7,23.50679874420166,9.006799,-14.5,matchup_efficiency,7.504219,momentum_strength,-1.163081,elo_diff,-0.81051576,large_favorite,0.8045376,away_comp_pass_ppa,-0.69045985
+UTEP @ Sam Houston,8,15.790071845054626,1.2900718,-14.5,home_team_hfa,-3.3075619,elo_vs_spread,1.6502339,home_ats,1.117451,home_last5_score_avg,0.82757014,away_streak,0.7621342
+Furman @ Wofford,8,21.754982948303223,-6.254983,15.5,home_team_hfa,-1.8945633,hfa_diff,-1.4588364,matchup_efficiency,-1.3926761,home_ats,-0.7976622,elo_vs_spread,-0.61464417
+Stonehill @ Yale,8,19.506475806236267,-1.0064758,18.5,elo_vs_spread,-2.7420769,home_team_hfa,1.8079724,rest_favorite_interaction,-0.8739572,elo_diff,0.6524559,momentum_strength,-0.47395113
+Princeton @ Brown,8,20.949206471443176,-1.5507935,-22.5,home_team_hfa,-1.7131635,matchup_efficiency,-1.2333,elo_vs_spread,-0.48139113,away_last5_defense_avg,0.36953995,away_last5_score_avg,-0.35803074
+Eastern Illinois @ Southeast Missouri State,8,20.89349734783173,0.60650265,21.5,home_ats,-2.8993487,ats_diff,1.9934505,hfa_diff,1.5611055,home_streak,-0.89413095,matchup_efficiency,-0.6593029
+North Dakota @ Southern Illinois,8,15.817582681775091,-0.18241732,-16.0,elo_vs_spread,1.9468932,away_last5_defense_avg,-1.1354351,home_scoring_trend,1.0173997,matchup_efficiency,-0.8672173,home_ats,-0.43788147
+Stony Brook @ Monmouth,8,16.442147493362427,2.5578525,19.0,home_team_hfa,1.288659,elo_vs_spread,-1.0137734,rest_favorite_interaction,-0.816556,matchup_efficiency,-0.6782102,hfa_diff,0.6677018
+UT Martin @ Gardner-Webb,8,37.26596635580063,-0.73403364,-38.0,hfa_diff,-1.4776173,elo_vs_spread,-1.2063918,matchup_efficiency,-1.1069081,home_team_hfa,-0.51868635,home_scoring_trend,0.50740874
+Tennessee Tech @ Lindenwood,8,16.622492790222168,9.122493,-7.5,elo_vs_spread,4.253062,matchup_efficiency,-1.4296446,rest_spread_interaction,1.2107792,away_last5_defense_avg,-0.9983285,hfa_diff,0.940786
+Holy Cross @ Richmond,8,16.13875722885132,4.638757,-11.5,streak_diff,1.3645284,home_team_hfa,1.317964,elo_vs_spread,-0.8484723,matchup_efficiency,-0.8182303,pass_efficiency_diff,0.48518986
+South Dakota State @ Murray State,8,21.394076347351078,-4.8940763,16.5,elo_vs_spread,8.04966,streak_diff,-3.9234726,home_team_hfa,-2.9700682,matchup_efficiency,-2.2004006,hfa_diff,-1.9992871
+Troy @ UL Monroe,8,21.083184957504272,2.583185,-18.5,elo_vs_spread,6.1542606,matchup_efficiency,-3.4128098,home_team_hfa,-1.9866883,hfa_diff,-1.3816141,away_comp_rush_ppa,1.0312684
+Purdue @ Northwestern,8,18.143849849700928,-2.1438498,16.0,home_team_hfa,-1.405838,matchup_efficiency,1.371884,elo_diff,-1.1137705,streak_diff,1.0805906,pass_efficiency_diff,0.6318798
+Rhode Island @ UAlbany,8,30.379457235336304,2.8794572,-27.5,elo_vs_spread,4.2517037,matchup_efficiency,-1.2734,hfa_diff,-1.0374895,rest_spread_interaction,0.5385942,elo_diff,0.4734085
+Texas State @ Marshall,8,18.10114479064941,-12.101145,6.0,matchup_efficiency,-9.085791,elo_diff,-1.2580389,home_scoring_trend,-1.1758345,pass_efficiency_diff,-0.9479191,elo_efficiency_interaction,0.52139217
+Coastal Carolina @ App State,8,16.56729507446289,-1.9327049,-18.5,matchup_efficiency,-3.7007296,elo_vs_spread,-2.2061903,elo_diff,-2.082874,pass_efficiency_diff,0.76772815,home_team_hfa,0.6372407
+Old Dominion @ James Madison,8,34.943801045417786,-1.943801,33.0,elo_diff,-1.85504,away_last5_defense_avg,-1.4026285,momentum_strength,1.3272302,pass_efficiency_diff,-1.2963725,matchup_efficiency,-1.0439899
+UNLV @ Boise State,8,15.98627471923828,28.486275,12.5,matchup_efficiency,20.263475,home_comp_off_ppa,3.0167232,hfa_diff,1.127021,home_team_hfa,1.0974305,elo_vs_spread,0.94962806
+East Texas A&M @ Incarnate Word,8,27.121801137924194,1.6218011,-25.5,elo_vs_spread,-2.74516,hfa_diff,-1.464068,home_ats,0.6859523,home_streak,-0.5863215,away_last5_score_avg,0.5672806
+Howard @ Tennessee State,8,19.25924184918404,-0.25924185,19.0,hfa_diff,-1.2929659,matchup_efficiency,-1.0414245,elo_vs_spread,1.0146683,home_last5_score_avg,0.75063086,home_team_hfa,-0.5887637
+Duquesne @ Mercyhurst,8,32.869035601615906,-1.1309644,-34.0,elo_vs_spread,1.582985,home_ats,-1.147418,matchup_efficiency,-1.0581834,hfa_diff,-1.0270836,home_team_hfa,-0.46187204
+Houston Christian @ McNeese,8,17.335788249969482,3.1642118,20.5,away_last5_score_avg,1.1032584,home_last5_score_avg,0.8576865,matchup_efficiency,-0.79722714,elo_vs_spread,-0.7945471,hfa_diff,0.5515053
+Eastern Kentucky @ North Alabama,8,30.811158180236816,1.6888418,32.5,elo_vs_spread,3.8072402,matchup_efficiency,-1.1458213,hfa_diff,-1.037705,away_last5_defense_avg,0.98928237,elo_diff,0.46272942
+Missouri @ Auburn,8,21.259366989135746,16.759367,-4.5,matchup_efficiency,6.5522094,elo_vs_spread,5.2704234,elo_efficiency_interaction,0.94689214,large_favorite,0.9418076,ats_diff,0.9357159
+Florida State @ Stanford,8,20.869405508041385,3.6305945,24.5,elo_vs_spread,9.369281,home_team_hfa,-2.8719363,away_scoring_trend,-2.2689695,matchup_efficiency,-1.4991844,pass_efficiency_diff,0.9178357
+Columbia @ Dartmouth,9,30.44752860069275,3.0524714,33.5,elo_vs_spread,-1.5784677,streak_diff,0.98044676,matchup_efficiency,-0.6575758,hfa_diff,0.6003765,pass_efficiency_diff,0.46062335
+North Texas @ Charlotte,9,17.228696823120117,8.728697,-8.5,elo_vs_spread,12.887872,matchup_efficiency,-3.3716652,home_team_hfa,-2.3298566,hfa_diff,-1.3150351,pass_efficiency_diff,-1.2803528
+Duquesne @ Wagner,9,32.71626913547516,1.7837309,34.5,elo_vs_spread,4.6148067,matchup_efficiency,-1.552376,hfa_diff,-1.374092,home_last5_score_avg,0.9756666,away_last5_defense_avg,-0.90645504
+Presbyterian @ Dayton,9,20.84893250465393,3.6510675,24.5,elo_vs_spread,2.457296,away_last5_defense_avg,-2.0086324,home_team_hfa,1.562417,matchup_efficiency,-1.0278912,away_last5_score_avg,-0.7126305
+Stonehill @ Mercyhurst,9,15.417687356472015,0.91768736,-14.5,expected_total,2.2299366,home_ats,-1.5558976,home_last5_score_avg,0.79369485,elo_vs_spread,-0.691223,away_last5_score_avg,0.6195425
+New Haven @ Long Island University,9,17.237979888916016,-5.23798,12.0,elo_vs_spread,-1.7309477,hfa_diff,-1.3988656,home_last5_defense_avg,-1.1784484,matchup_efficiency,-1.1198187,rest_favorite_interaction,-1.0232345
+Kansas State @ Kansas,9,15.794696807861328,-12.705303,-28.5,matchup_efficiency,-9.155672,line_movement,-2.718972,elo_vs_spread,-2.312604,pass_efficiency_diff,-2.0935342,home_team_hfa,0.9655912
+Delaware State @ North Carolina Central,9,28.743903279304504,1.7439033,-27.0,home_scoring_trend,-2.0841444,home_streak,2.0833411,elo_vs_spread,-2.0720446,home_team_hfa,1.6678271,away_last5_score_avg,-0.9273781
+Elon @ Maine,9,23.012264251708984,2.4877357,25.5,streak_diff,3.1502817,home_scoring_trend,2.648483,elo_vs_spread,2.431887,matchup_efficiency,-0.8942901,home_team_hfa,-0.811689
+Illinois State @ South Dakota,9,16.323490142822266,4.82349,-11.5,home_team_hfa,1.5940036,matchup_efficiency,-0.7215785,elo_vs_spread,-0.5130062,elo_diff,0.4474322,pass_efficiency_diff,0.36790803
+Gardner-Webb @ Lindenwood,9,29.782198190689087,3.2821982,-26.5,elo_vs_spread,1.4017099,matchup_efficiency,-0.8662345,home_team_hfa,0.5889454,hfa_diff,0.5156164,home_last5_defense_avg,0.47696498
+VMI @ Mercer,9,28.21153163909912,6.2884684,34.5,elo_vs_spread,-4.5800133,hfa_diff,2.9207656,home_team_hfa,1.7293783,home_streak,1.1528089,rest_diff,0.9668614
+Robert Morris @ St. Francis (PA),9,18.81261444091797,11.312614,-7.5,expected_total,5.0592823,away_last5_defense_avg,1.4046683,away_last5_score_avg,1.2601662,elo_vs_spread,0.95765936,home_last5_score_avg,0.94904184
+Ball State @ Northern Illinois,9,16.622413635253906,-9.122414,7.5,matchup_efficiency,-5.5211735,elo_diff,-2.0381796,home_ats,-1.4450674,elo_vs_spread,-1.4366622,home_team_hfa,-0.79070085
+UAlbany @ Villanova,9,21.06444358825684,2.5644436,-18.5,elo_vs_spread,-4.3995786,home_team_hfa,1.7428709,home_streak,1.2608955,streak_diff,0.8531393,elo_diff,0.7160166
+BYU @ Iowa State,9,16.413610994815826,-0.086389005,-16.5,matchup_efficiency,-1.1618931,home_team_hfa,1.0056115,pass_efficiency_diff,-0.81851006,away_streak,0.71939397,away_last5_defense_avg,0.5309286
+Alabama State @ Alabama A&M,9,28.89510609209537,-0.10489391,-29.0,elo_vs_spread,4.254045,matchup_efficiency,-1.3790838,hfa_diff,-1.111462,home_last5_defense_avg,0.9532597,momentum_strength,-0.7464957
+Chattanooga @ Samford,9,30.208879470825195,4.2088795,-26.0,elo_vs_spread,3.465346,matchup_efficiency,-1.3353348,hfa_diff,-0.85682905,home_ats,0.82556677,away_last5_defense_avg,0.43186557
+Jackson State @ Grambling,9,21.19095587730408,1.8090441,23.0,elo_vs_spread,5.5860896,matchup_efficiency,-1.422143,home_team_hfa,0.6405796,away_last5_defense_avg,0.60268164,elo_diff,0.43741426
+Incarnate Word @ UT Rio Grande Valley,9,29.910030364990234,2.5899696,32.5,elo_vs_spread,1.4729706,home_team_hfa,1.1517577,matchup_efficiency,-0.7500089,home_last5_score_avg,-0.45353216,elo_diff,0.4531374
+North Dakota State @ South Dakota State,9,25.834381341934204,3.8343813,-22.0,elo_vs_spread,2.8958664,home_streak,1.5853653,away_last5_defense_avg,-1.4305695,home_team_hfa,1.0856389,matchup_efficiency,-0.8718587
+Marshall @ Coastal Carolina,10,18.566023349761963,5.9339767,24.5,elo_vs_spread,6.879438,matchup_efficiency,-2.6509552,ats_diff,0.9470343,hfa_diff,-0.9316478,away_last5_defense_avg,0.6254811
+Tulane @ UTSA,10,21.390554428100582,6.1094456,27.5,elo_vs_spread,4.325867,home_team_hfa,1.2766193,matchup_efficiency,-0.82412153,home_comp_rush_ppa,-0.6762394,hfa_diff,0.5467004
+Towson @ North Carolina A&T,10,46.51915943622589,1.0191594,-45.5,elo_vs_spread,3.6081457,home_team_hfa,-3.4044654,matchup_efficiency,-1.5364116,away_last5_score_avg,-0.44124657,away_last5_defense_avg,0.42983118
+Georgetown @ Lehigh,10,19.05248498916626,-2.052485,17.0,elo_vs_spread,-4.9811463,home_streak,1.8518287,home_team_hfa,-1.4571402,streak_diff,0.71127546,elo_diff,0.67759
+Monmouth @ Bryant,10,17.235613584518433,3.2356136,-14.0,elo_vs_spread,3.7802749,home_team_hfa,-1.719857,matchup_efficiency,-1.6770062,hfa_diff,-1.1715374,home_streak,-0.89723074
+Charleston Southern @ Southeast Missouri State,10,16.59798601269722,0.09798601,-16.5,elo_vs_spread,-0.9566977,momentum_strength,-0.80814004,hfa_diff,0.7532003,matchup_efficiency,-0.7511178,home_scoring_trend,0.5438772
+Marist @ St. Thomas (MN),10,25.60101318359375,5.398987,31.0,elo_vs_spread,-2.6639032,home_team_hfa,1.3955324,hfa_diff,1.2304368,streak_diff,1.0735542,home_ats,-0.6683997
+Montana State @ Northern Colorado,10,20.257487773895264,-4.242512,-24.5,elo_vs_spread,3.839608,home_team_hfa,-3.822779,away_last5_defense_avg,-2.3627346,matchup_efficiency,-2.326957,hfa_diff,-1.9557788
+Alcorn State @ Texas Southern,10,27.29271769523621,1.7927177,-25.5,home_streak,1.649968,home_scoring_trend,-0.89218795,matchup_efficiency,-0.74682754,away_last5_defense_avg,-0.7250111,away_scoring_trend,0.6718865
+Indiana State @ South Dakota State,10,46.729727029800415,3.729727,-43.0,elo_vs_spread,-3.5559945,hfa_diff,3.1929111,home_team_hfa,1.8248806,away_last5_defense_avg,0.77722865,elo_diff,0.70176655
+Southern @ Arkansas-Pine Bluff,10,21.122880935668945,-1.1228809,20.0,home_team_hfa,-1.9221611,matchup_efficiency,-1.2193847,elo_vs_spread,1.0581083,hfa_diff,-0.7104685,expected_total,0.5953456
+New Mexico @ UNLV,10,16.756505966186523,-25.256506,-8.5,matchup_efficiency,-22.032833,elo_vs_spread,-4.5945406,pass_efficiency_diff,-1.675392,elo_diff,-0.8918984,home_comp_rush_ppa,-0.6860867
+Fresno State @ Boise State,10,29.50558280944824,-10.994417,-40.5,elo_vs_spread,-5.569205,matchup_efficiency,-4.7638946,elo_diff,-2.757879,home_scoring_trend,-1.2982483,home_team_hfa,1.2780848
+Notre Dame @ Boston College,10,20.361520051956177,-3.86152,16.5,elo_vs_spread,13.494026,matchup_efficiency,-11.687779,streak_diff,-2.1123543,away_last5_defense_avg,-2.0525208,home_streak,-1.9264511
+Youngstown State @ North Dakota State,10,21.024780750274655,2.5247808,-18.5,elo_vs_spread,-3.9235249,home_streak,2.390006,home_team_hfa,1.8301411,home_last5_defense_avg,-1.0506799,streak_diff,0.8304721
+Idaho State @ UC Davis,10,19.41829013824463,5.91829,-13.5,away_scoring_trend,-2.896911,home_streak,2.5880556,elo_vs_spread,-1.5513732,home_team_hfa,1.3655277,streak_diff,1.339569
+Sacramento State @ Eastern Washington,10,19.62670993804932,6.12671,-13.5,elo_vs_spread,4.084073,momentum_strength,2.0218894,matchup_efficiency,-1.3230848,away_last5_defense_avg,1.005792,home_ats,0.89470655
+Lindenwood @ Tennessee State,10,17.329524517059326,-1.1704755,-18.5,elo_vs_spread,1.1855583,matchup_efficiency,-0.9662302,hfa_diff,-0.9379528,home_team_hfa,-0.73867923,home_last5_score_avg,0.716105
+Eastern Kentucky @ Central Arkansas,10,25.836440324783325,-1.6635597,-27.5,matchup_efficiency,-1.0360163,elo_vs_spread,-0.799926,pass_efficiency_diff,0.42253897,elo_diff,0.3735405,home_team_hfa,-0.36950523
+Portland State @ Cal Poly,10,18.95300436019897,-4.0469956,-23.0,home_team_hfa,-3.1412532,elo_vs_spread,-3.0179472,streak_diff,1.5119293,home_last5_defense_avg,1.2353662,away_last5_score_avg,1.1918888
+Northwestern State @ McNeese,10,25.185887813568115,5.314112,30.5,streak_diff,2.5921977,elo_vs_spread,-2.1049209,expected_total,1.8301418,home_last5_defense_avg,1.625916,away_last5_score_avg,1.5667615
+East Texas A&M @ SE Louisiana,10,24.861995697021484,2.6380043,27.5,home_streak,2.725911,elo_vs_spread,-1.8794322,streak_diff,1.1520079,away_last5_score_avg,0.85704947,home_scoring_trend,0.76127285
+Oklahoma @ Tennessee,10,16.185441970825195,7.185442,-9.0,matchup_efficiency,5.9397326,elo_vs_spread,1.8561021,home_team_hfa,0.99722415,large_favorite,0.9846495,away_last5_defense_avg,-0.72828376
+Kentucky @ Auburn,10,21.507591247558597,3.0075912,-18.5,matchup_efficiency,7.266202,elo_vs_spread,-2.714891,home_last5_score_avg,1.1496885,large_favorite,0.9285036,pass_efficiency_diff,-0.8962196
+Cincinnati @ Utah,10,15.668285846710203,3.8317142,19.5,matchup_efficiency,7.138834,elo_vs_spread,-2.2196987,line_movement,-1.7437794,elo_diff,-1.0040816,home_team_hfa,1.0017763
+New Hampshire @ Monmouth,11,34.51179575920105,1.0117958,-33.5,home_streak,1.5535158,home_team_hfa,1.461775,elo_vs_spread,-1.2360784,rest_favorite_interaction,-1.1618837,matchup_efficiency,-0.75003153
+Holy Cross @ Lehigh,11,17.22528624534607,-2.2252862,15.0,elo_vs_spread,-4.1000757,home_streak,1.9401212,home_team_hfa,-1.4067266,streak_diff,1.0694118,home_last5_defense_avg,-0.88329184
+Duquesne @ Long Island University,11,26.44571280479431,-1.4457128,25.0,elo_vs_spread,2.5645845,hfa_diff,-1.2844548,away_last5_defense_avg,-1.2315663,matchup_efficiency,-1.2197695,home_scoring_trend,-1.0551463
+Stonehill @ Central Connecticut,11,17.17102551460266,2.8289745,20.0,elo_vs_spread,-1.02373,expected_total,-0.98377746,streak_diff,0.942472,home_scoring_trend,-0.82863396,momentum_strength,-0.80467796
+Cornell @ Pennsylvania,11,27.66443133354187,-2.3355687,-30.0,elo_vs_spread,-0.9293323,hfa_diff,0.8294959,matchup_efficiency,-0.8042369,momentum_strength,-0.629184,home_team_hfa,-0.5327527
+Stetson @ Marist,11,19.85390043258667,-4.3539004,15.5,home_team_hfa,-3.9168546,matchup_efficiency,-1.2202488,elo_vs_spread,-1.0615171,home_last5_score_avg,1.0303082,rest_favorite_interaction,-0.8612464
+Illinois State @ Indiana State,11,21.79759961366653,0.2975996,-21.5,elo_vs_spread,3.386114,home_team_hfa,-3.306702,matchup_efficiency,-1.7329743,hfa_diff,-0.95574445,away_last5_defense_avg,0.39081243
+Bucknell @ Fordham,11,21.084437549114227,-0.41556245,-21.5,matchup_efficiency,-1.0224239,home_last5_score_avg,0.777045,elo_vs_spread,-0.7165812,hfa_diff,0.66007227,home_streak,-0.41059232
+Presbyterian @ Davidson,11,17.447387218475342,6.052613,23.5,elo_vs_spread,4.51693,matchup_efficiency,-1.4636416,ats_diff,1.0630417,home_streak,-0.9435567,home_team_hfa,0.85794175
+Wofford @ VMI,11,27.07061457633972,-3.9293854,-31.0,elo_vs_spread,3.3073316,home_team_hfa,-3.2461016,matchup_efficiency,-1.6947902,home_streak,-1.1544795,away_last5_defense_avg,-1.0478098
+Norfolk State @ North Carolina Central,11,26.611990451812744,4.1119905,-22.5,elo_vs_spread,-3.6130886,hfa_diff,2.8330257,home_team_hfa,1.6507328,streak_diff,0.6987262,elo_diff,0.69238055
+Eastern Washington @ Montana,11,26.574626922607425,4.574627,-22.0,elo_vs_spread,-4.2411113,home_streak,2.1317666,home_team_hfa,1.9148118,streak_diff,0.8108302,elo_diff,0.7066333
+Weber State @ Montana State,11,20.258836030960083,3.241164,23.5,elo_vs_spread,-4.2681327,home_team_hfa,1.7577276,home_streak,1.3463532,home_last5_defense_avg,-0.90550816,streak_diff,0.8573167
+Florida International @ Middle Tennessee,11,16.12602424621582,-11.373976,-27.5,matchup_efficiency,-8.277856,elo_vs_spread,-1.7811545,pass_efficiency_diff,-1.1303319,home_team_hfa,-1.117149,momentum_strength,-0.63439775
+Prairie View A&M @ Alabama A&M,11,40.02882421016693,0.5288242,-39.5,elo_vs_spread,1.6020322,matchup_efficiency,-1.0204041,away_last5_defense_avg,-0.66659224,home_last5_defense_avg,0.575694,hfa_diff,0.46979
+Stephen F. Austin @ Houston Christian,11,30.20125770568848,7.7012577,-22.5,elo_vs_spread,4.50935,home_last5_score_avg,1.5976937,matchup_efficiency,-1.4941,hfa_diff,-1.3191144,away_streak,1.1888961
+Texas A&M @ Missouri,11,15.38006865978241,1.3800687,-14.0,matchup_efficiency,-3.7839985,elo_vs_spread,2.9984848,pass_efficiency_diff,-1.7443902,home_team_hfa,1.4887699,home_pass_rush_balance,1.0882761
+Texas State @ Louisiana,11,15.547133445739746,-9.047133,6.5,matchup_efficiency,-13.476026,elo_vs_spread,3.165996,streak_diff,1.6174597,away_ats,0.7476603,home_comp_def_ppa,-0.50089425
+Northern Colorado @ Northern Arizona,11,23.98013591766357,2.519864,26.5,elo_vs_spread,-1.220558,home_last5_defense_avg,0.84715927,matchup_efficiency,-0.7686248,hfa_diff,0.7331699,pass_efficiency_diff,0.52213395
+Air Force @ San José State,11,21.38351964950561,5.3835196,-16.0,matchup_efficiency,6.1790156,elo_vs_spread,1.015958,large_favorite,0.8929002,hfa_diff,-0.84809375,elo_diff,-0.49439606
+UC Davis @ Idaho,11,15.55098295211792,4.050983,-11.5,home_team_hfa,1.6390595,elo_vs_spread,1.1861639,matchup_efficiency,-0.79732376,momentum_strength,-0.62914294,elo_diff,0.47076693
+California @ Louisville,11,15.702778339385986,-5.7972217,-21.5,elo_vs_spread,-4.331772,elo_diff,-2.3302536,home_team_hfa,1.5235537,pass_efficiency_diff,-1.2637429,large_favorite,-0.6799662
+Davidson @ Marist,12,16.439279079437256,-3.439279,13.0,home_team_hfa,-3.2798076,elo_vs_spread,-1.2994672,matchup_efficiency,-1.0485427,hfa_diff,-0.9588854,away_last5_defense_avg,-0.7567485
+North Dakota @ Murray State,12,22.96712446212769,-6.9671245,16.0,elo_vs_spread,6.063485,home_team_hfa,-3.4041028,matchup_efficiency,-2.588455,away_last5_defense_avg,-2.524644,hfa_diff,-2.07507
+Holy Cross @ Bucknell,12,16.35967206954956,-3.140328,-19.5,home_team_hfa,-3.1622784,matchup_efficiency,-1.5241501,hfa_diff,-0.9055381,home_ats,0.7899097,elo_vs_spread,-0.5502424
+New Hampshire @ Bryant,12,18.382699251174927,1.3826993,-17.0,elo_vs_spread,3.5078397,home_team_hfa,-1.4808697,matchup_efficiency,-1.4257737,hfa_diff,-1.1419879,home_last5_defense_avg,0.47874695
+Pennsylvania @ Harvard,12,24.0269672870636,3.0269673,-21.0,elo_vs_spread,-3.7871583,home_team_hfa,1.8621175,home_streak,1.6854368,home_last5_defense_avg,-1.504106,streak_diff,0.8164301
+East Tennessee State @ Western Carolina,12,25.736660480499268,2.7366605,-23.0,home_team_hfa,1.3965867,elo_vs_spread,-0.75882053,away_last5_defense_avg,0.7189928,matchup_efficiency,-0.65453774,pass_efficiency_diff,0.48604566
+Monmouth @ North Carolina A&T,12,19.81505537033081,-2.6849446,-22.5,elo_vs_spread,4.250714,home_team_hfa,-3.4884393,matchup_efficiency,-2.152852,hfa_diff,-1.9038224,away_scoring_trend,0.82845354
+William & Mary @ Hampton,12,19.135411977767944,-3.364588,-22.5,elo_vs_spread,3.6625674,home_team_hfa,-3.286192,matchup_efficiency,-2.168932,hfa_diff,-1.9179235,home_streak,-1.4312817
+Rhode Island @ Maine,12,30.55438351631165,2.5543835,-28.0,home_team_hfa,-2.1815028,home_streak,1.8723351,elo_vs_spread,1.3999194,away_last5_defense_avg,1.0753993,hfa_diff,-1.0469792
+Presbyterian @ St. Thomas (MN),12,24.28023099899292,4.780231,-19.5,home_team_hfa,1.5295999,home_streak,1.1968886,streak_diff,1.1503786,matchup_efficiency,-0.72398156,away_last5_defense_avg,-0.71647894
+Arkansas-Pine Bluff @ Prairie View A&M,12,29.08159589767456,-3.081596,26.0,elo_vs_spread,-3.3153088,home_team_hfa,-0.94204825,home_scoring_trend,-0.8644616,elo_diff,0.64256644,home_last5_defense_avg,-0.5574679
+Chattanooga @ Mercer,12,28.61259174346924,1.8874083,30.5,home_streak,2.481909,elo_vs_spread,-2.0130894,home_team_hfa,1.6306256,home_scoring_trend,-1.366291,streak_diff,1.1032947
+Illinois State @ South Dakota State,12,17.102200835943222,-0.39779916,-17.5,home_team_hfa,1.6287683,matchup_efficiency,-0.98775256,elo_diff,0.43748498,elo_vs_spread,-0.42335272,hfa_diff,0.40931693
+Eastern Illinois @ Lindenwood,12,23.87131530046463,0.6286847,24.5,home_last5_defense_avg,1.1096312,away_last5_score_avg,1.0496904,matchup_efficiency,-0.79192525,hfa_diff,0.627803,pass_efficiency_diff,0.47097486
+San José State @ Nevada,12,27.49686050415039,27.50314,55.0,matchup_efficiency,19.533289,elo_vs_spread,6.870043,home_team_hfa,-1.9216508,large_favorite,1.1382302,elo_efficiency_interaction,1.1330792
+Northwestern State @ Nicholls,12,16.435961484909058,-2.0640385,-18.5,elo_vs_spread,-5.2916074,home_team_hfa,-1.3181183,streak_diff,0.95246565,home_scoring_trend,-0.91788644,elo_diff,0.6603553
+Northern Colorado @ Eastern Washington,12,18.23267912864685,-1.7326791,16.5,away_scoring_trend,-2.8201897,matchup_efficiency,-1.0843352,away_last5_defense_avg,-0.98172677,home_team_hfa,-0.88455755,hfa_diff,0.65878683
+Montana @ Portland State,12,17.77635359764099,2.2763536,-15.5,elo_vs_spread,3.1902583,home_team_hfa,-2.3915236,matchup_efficiency,-2.3431473,streak_diff,2.1100826,away_last5_defense_avg,1.466216
+Delaware @ Sam Houston,12,16.855634212493896,-2.3556342,14.5,matchup_efficiency,-6.7818303,elo_vs_spread,5.8532877,home_team_hfa,-2.1760905,pass_efficiency_diff,-0.9887416,elo_efficiency_interaction,-0.6548825
+North Alabama @ Tarleton State,12,24.844841957092285,2.655158,27.5,elo_vs_spread,-4.0645666,home_team_hfa,1.8273628,elo_diff,0.7170515,hfa_diff,0.66862595,rest_spread_interaction,0.62312776
+TCU @ BYU,12,24.24732041358948,3.7526796,28.0,home_team_hfa,1.4195917,matchup_efficiency,-0.71014833,elo_vs_spread,-0.51839346,pass_efficiency_diff,0.46738145,hfa_diff,0.46277255
+Miami (OH) @ Buffalo,13,16.768842458724976,2.2688425,-14.5,elo_vs_spread,2.9273822,matchup_efficiency,-1.4520882,hfa_diff,-0.71432227,home_comp_rush_ppa,-0.6708776,pass_efficiency_diff,0.35268053
+Stephen F. Austin @ Northwestern State,13,18.452107906341556,7.952108,-10.5,elo_vs_spread,6.9975414,home_last5_score_avg,5.2584786,home_team_hfa,-3.5869226,away_last5_defense_avg,-2.2187297,matchup_efficiency,-2.2031698
+Harvard @ Yale,13,22.70118486881256,0.79881513,23.5,elo_vs_spread,2.2791557,home_team_hfa,1.587535,home_streak,1.1675284,away_last5_defense_avg,-1.1640302,matchup_efficiency,-0.8248889
+UAlbany @ Monmouth,13,36.00953531265259,-0.4904647,-36.5,elo_vs_spread,-4.3930316,home_team_hfa,1.9217364,streak_diff,0.84436303,home_last5_defense_avg,-0.7218315,elo_diff,0.70291984
+Western Carolina @ VMI,13,17.194818377494812,0.6948184,-16.5,elo_vs_spread,4.4241023,home_team_hfa,-3.3501835,matchup_efficiency,-2.1293476,hfa_diff,-1.4230194,home_last5_score_avg,0.8597555
+Charlotte @ Georgia,13,21.71989154815674,11.219892,-10.5,matchup_efficiency,19.749474,elo_vs_spread,-11.56797,hfa_diff,2.1454086,home_comp_def_ppa,1.4802997,home_streak,1.3441384
+Southern Illinois @ Illinois State,13,37.11005115509033,2.6100512,-34.5,home_streak,2.1551008,streak_diff,1.6109353,matchup_efficiency,-0.84049386,elo_vs_spread,-0.82356477,pass_efficiency_diff,0.51191163
+Murray State @ Indiana State,13,32.3127646446228,5.3127646,-27.0,home_team_hfa,-2.8599234,streak_diff,1.9216201,away_last5_score_avg,1.7232,home_last5_defense_avg,1.3536376,elo_vs_spread,-1.0785764
+Columbia @ Cornell,13,21.777421474456787,-4.7225785,-26.5,home_team_hfa,-2.847836,streak_diff,1.4933192,matchup_efficiency,-1.3260328,elo_vs_spread,-1.1145868,hfa_diff,-0.85826695
+Dayton @ Davidson,13,15.837392807006836,5.337393,-10.5,elo_vs_spread,3.5668747,home_team_hfa,1.6186608,matchup_efficiency,-1.2567761,away_last5_defense_avg,-0.78618056,hfa_diff,0.75176793
+Western Illinois @ Gardner-Webb,13,17.76760971546173,-0.7323903,-18.5,elo_vs_spread,-1.3696957,matchup_efficiency,-0.8288253,hfa_diff,0.67113036,home_team_hfa,-0.6665852,pass_efficiency_diff,0.41376474
+Chattanooga @ Wofford,13,19.05943369865417,-1.5594337,17.5,home_team_hfa,-1.7459127,hfa_diff,-1.222898,matchup_efficiency,-1.0756985,away_scoring_trend,0.6588535,elo_vs_spread,-0.5470308
+Southern Utah @ North Alabama,13,16.496757000684738,-0.496757,16.0,elo_vs_spread,4.5200534,matchup_efficiency,-1.6155499,hfa_diff,-1.3914107,away_last5_defense_avg,-1.0046347,away_streak,0.73226416
+Lindenwood @ Southeast Missouri State,13,18.365984201431274,2.8659842,-15.5,elo_vs_spread,1.4047256,matchup_efficiency,-0.9029413,home_team_hfa,0.7954296,elo_diff,0.42922962,pass_efficiency_diff,0.33975184
+Duquesne @ Robert Morris,13,15.88282871246338,-5.3828287,10.5,elo_vs_spread,3.4171867,home_team_hfa,-2.7206974,matchup_efficiency,-1.98605,hfa_diff,-1.3244916,away_last5_defense_avg,-1.3147782
+Mississippi Valley State @ Prairie View A&M,13,25.91500306129456,-2.415003,23.5,elo_vs_spread,-5.470477,home_scoring_trend,-1.9449619,home_team_hfa,-1.3729006,streak_diff,0.86371964,elo_diff,0.65166306
+Northern Arizona @ Weber State,13,36.74208402633667,-2.742084,34.0,elo_vs_spread,3.4499924,home_ats,-1.6365917,matchup_efficiency,-1.4940412,away_scoring_trend,0.90834475,home_streak,-0.83222324
+Norfolk State @ Howard,13,17.54408884048462,7.955911,25.5,hfa_diff,4.399673,streak_diff,1.7501538,home_team_hfa,1.367555,elo_vs_spread,0.91248006,momentum_strength,-0.81114835
+St. Thomas (MN) @ North Dakota State,13,24.49809145927429,-2.9980915,21.5,elo_vs_spread,-3.7895198,home_streak,3.3005166,home_team_hfa,1.7543578,away_last5_defense_avg,-1.452945,home_last5_defense_avg,-0.97621584
+Jackson State @ Alcorn State,13,21.247485637664795,-4.2525144,-25.5,elo_vs_spread,-3.0980165,home_streak,1.9191631,home_last5_defense_avg,-1.3043395,away_last5_defense_avg,-1.1467204,home_team_hfa,-0.55411613
+Idaho State @ Idaho,13,24.729103088378903,1.2291031,-23.5,home_team_hfa,1.5093504,hfa_diff,0.8410654,matchup_efficiency,-0.7876984,elo_vs_spread,-0.51354927,elo_diff,0.44450814
+Georgetown @ Holy Cross,13,29.003610998392105,0.496389,29.5,matchup_efficiency,-0.88967097,elo_vs_spread,-0.58522016,hfa_diff,0.5358406,elo_diff,0.42382655,pass_efficiency_diff,0.41498107
+Eastern Kentucky @ Utah Tech,13,18.56837010383606,2.06837,-16.5,home_team_hfa,-3.062045,elo_vs_spread,1.9207944,matchup_efficiency,-1.5234561,hfa_diff,-0.82896644,home_last5_score_avg,0.63026166
+Austin Peay @ Tarleton State,13,17.309211239218712,-0.19078876,-17.5,elo_vs_spread,-2.4374666,home_team_hfa,1.6799674,hfa_diff,0.5602061,elo_diff,0.5279629,pass_efficiency_diff,0.45617178
+Illinois @ Wisconsin,13,20.13390350341797,5.3660965,25.5,elo_vs_spread,3.8941038,home_last5_score_avg,2.1936767,elo_efficiency_interaction,1.5810847,hfa_diff,-1.2529154,elo_diff,0.3717949
+San José State @ San Diego State,13,16.446131229400635,-4.446131,12.0,elo_vs_spread,-3.3949783,elo_diff,-1.5522672,home_team_hfa,-1.1900756,home_comp_pass_ppa,0.96656626,matchup_efficiency,-0.9344856
+Bowling Green @ Massachusetts,14,16.569847613573074,-0.4301524,-17.0,elo_vs_spread,8.355903,matchup_efficiency,-6.136189,home_team_hfa,-1.9193293,expected_total,1.5701075,pass_efficiency_diff,-1.5437853
+Iowa @ Nebraska,14,15.40951418876648,-3.0904858,-18.5,matchup_efficiency,-7.4120164,elo_vs_spread,4.6435385,pass_efficiency_diff,-1.1640855,elo_efficiency_interaction,-0.89393276,away_last5_defense_avg,-0.63057315
+Air Force @ Colorado State,14,16.768422842025757,-1.7315772,-18.5,elo_vs_spread,3.2686524,home_team_hfa,-2.4414778,matchup_efficiency,-1.6632222,home_last5_score_avg,1.0906013,hfa_diff,-0.90951604
+Kentucky @ Louisville,14,26.763245582580566,13.236754,40.0,matchup_efficiency,11.00934,elo_vs_spread,2.5117357,home_team_hfa,0.8834477,large_favorite,0.85948396,elo_diff,-0.48267543
+Harvard @ Villanova,14,39.369558811187744,7.630441,47.0,streak_diff,2.4327462,home_streak,2.3457444,elo_vs_spread,2.0335763,home_team_hfa,1.1030567,home_last5_defense_avg,-0.602601
+Miami @ Pittsburgh,14,22.599708795547485,-1.9002912,-24.5,elo_vs_spread,4.8569756,matchup_efficiency,-4.698913,away_last5_defense_avg,-0.7839031,home_team_hfa,0.531673,elo_diff,0.5262129
+New Hampshire @ South Dakota State,14,24.45022940635681,2.5497706,27.0,home_team_hfa,1.4411558,away_last5_defense_avg,-1.431621,home_last5_score_avg,1.1304388,elo_vs_spread,-1.1302907,away_streak,1.0226727
+North Dakota @ Tennessee Tech,14,23.94148576259613,0.94148576,-23.0,elo_vs_spread,1.5148531,matchup_efficiency,-1.0426308,away_last5_defense_avg,0.90075845,momentum_strength,-0.5729436,elo_diff,0.38865605
+Illinois State @ SE Louisiana,14,22.31969177722931,1.8196918,-20.5,home_team_hfa,1.4630015,away_last5_defense_avg,0.7924747,matchup_efficiency,-0.67252475,elo_vs_spread,-0.5085613,elo_diff,0.43589061
+Florida International @ Sam Houston,14,21.52560329437256,-7.9743967,-29.5,matchup_efficiency,-11.483579,elo_vs_spread,5.893244,home_team_hfa,-1.8164662,pass_efficiency_diff,-1.5049591,elo_efficiency_interaction,-0.46160814
+Florida A&M @ Mississippi Valley State,14,18.932753205299377,-1.4327532,17.5,home_team_hfa,-3.4631178,elo_vs_spread,3.3514159,matchup_efficiency,-1.9179409,home_last5_score_avg,0.80817455,away_streak,-0.40210095
+LSU @ Oklahoma,14,18.30928421020508,10.809284,-7.5,matchup_efficiency,10.424946,home_comp_rush_ppa,-1.3210806,home_comp_def_ppa,1.1253722,elo_diff,-0.97814405,large_favorite,0.8622005
+Wake Forest @ Duke,14,16.357109427452087,-1.8571094,14.5,elo_diff,-1.1114851,momentum_strength,-1.0320864,home_team_hfa,0.9826331,hfa_diff,0.7553179,ats_diff,-0.53019094
+James Madison @ Coastal Carolina,14,20.195650100708008,-4.80435,-25.0,matchup_efficiency,-16.045698,elo_vs_spread,8.072703,streak_diff,2.953248,home_comp_rush_ppa,-2.2465444,pass_efficiency_diff,-1.3174857
+Fresno State @ San José State,14,18.696778774261475,-4.803221,-23.5,matchup_efficiency,-6.865414,elo_vs_spread,5.455107,elo_efficiency_interaction,-0.89501345,hfa_diff,-0.8491575,away_last5_defense_avg,0.7109898
+BYU @ Texas Tech,15,19.41990041732788,-4.9199004,14.5,elo_vs_spread,-4.109651,elo_diff,-2.372883,home_last5_defense_avg,-1.682923,home_team_hfa,1.4517797,home_streak,1.4156508

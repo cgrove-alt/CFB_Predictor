@@ -81,6 +81,19 @@ class RefreshScheduler:
             return REFRESH_INTERVAL_GAMEDAY
         return REFRESH_INTERVAL_DEFAULT
 
+    def check_retrain_triggers(self) -> dict:
+        """Check if model retraining is needed and trigger if so."""
+        try:
+            from auto_retrain import check_and_retrain
+            result = check_and_retrain()
+            return result
+        except ImportError as e:
+            logger.warning(f"auto_retrain module not available: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Error checking retrain triggers: {e}")
+            return None
+
     def run_script(self, script_path: Path, timeout: int = 300) -> tuple:
         """Run a Python script and return success status and output."""
         try:
@@ -104,7 +117,7 @@ class RefreshScheduler:
         start_time = time.time()
 
         # Step 1: Refresh raw data from API
-        logger.info("Step 1/3: Running refresh_all_data.py")
+        logger.info("Step 1/4: Running refresh_all_data.py")
         success1, stdout1, stderr1 = self.run_script(self.refresh_all_script, timeout=300)
 
         if not success1:
@@ -112,10 +125,10 @@ class RefreshScheduler:
             logger.error(error_msg)
             return False, error_msg
 
-        logger.info("Step 1/3: Complete")
+        logger.info("Step 1/4: Complete")
 
         # Step 2: Fetch betting lines
-        logger.info("Step 2/3: Running fetch_betting_lines.py")
+        logger.info("Step 2/4: Running fetch_betting_lines.py")
         success2, stdout2, stderr2 = self.run_script(self.fetch_lines_script, timeout=180)
 
         if not success2:
@@ -123,10 +136,10 @@ class RefreshScheduler:
             logger.error(error_msg)
             return False, error_msg
 
-        logger.info("Step 2/3: Complete")
+        logger.info("Step 2/4: Complete")
 
         # Step 3: Prepare safe features
-        logger.info("Step 3/3: Running prepare_safe_features.py")
+        logger.info("Step 3/4: Running prepare_safe_features.py")
         success3, stdout3, stderr3 = self.run_script(self.prepare_safe_script, timeout=120)
 
         if not success3:
@@ -134,10 +147,20 @@ class RefreshScheduler:
             logger.error(error_msg)
             return False, error_msg
 
-        logger.info("Step 3/3: Complete")
+        logger.info("Step 3/4: Complete")
+
+        # Step 4: Check retraining triggers
+        logger.info("Step 4/4: Checking retraining triggers")
+        retrain_result = self.check_retrain_triggers()
+        if retrain_result:
+            logger.info(f"Retraining triggered: {retrain_result}")
+        else:
+            logger.info("Step 4/4: No retraining needed")
 
         duration = time.time() - start_time
         success_msg = f"Completed in {duration:.1f}s"
+        if retrain_result:
+            success_msg += f" (retrain: {retrain_result.get('reason', 'unknown')})"
         logger.info(f"Data refresh completed successfully in {duration:.1f}s")
 
         return True, success_msg

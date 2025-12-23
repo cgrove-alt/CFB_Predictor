@@ -558,6 +558,18 @@ def load_totals_config():
     return None
 
 
+def load_retrain_metrics():
+    """Load retrain metrics from JSON file."""
+    metrics_file = Path('.retrain_metrics.json')
+    if metrics_file.exists():
+        try:
+            with open(metrics_file, 'r') as f:
+                return json.load(f)
+        except:
+            pass
+    return None
+
+
 @st.cache_resource
 def load_model_config():
     """Load V18 model config (58 features)."""
@@ -1613,6 +1625,7 @@ with st.expander("⚙️ Change Season/Week", expanded=False):
 model, model_file = load_spread_error_model()
 totals_model, totals_model_file = load_totals_model()
 quantile_model, quantile_model_file = load_quantile_model()
+retrain_metrics = load_retrain_metrics()
 
 if model:
     models_info = f"Spread: {model_file}"
@@ -1620,10 +1633,22 @@ if model:
         models_info += f" | Totals: {totals_model_file}"
     if quantile_model:
         models_info += " | Intervals: V17"
+
+    # Add retrain info if available
+    retrain_info = ""
+    if retrain_metrics:
+        last_retrain = retrain_metrics.get('last_retrain', '')[:10]  # Just date
+        model_version = retrain_metrics.get('model_version', '')
+        accuracy = retrain_metrics.get('rolling_4week_accuracy', 0)
+        if last_retrain:
+            retrain_info = f" | Last Trained: {last_retrain}"
+            if accuracy > 0:
+                retrain_info += f" | 4-Week Accuracy: {accuracy:.1%}"
+
     st.markdown(f"""
     <div class="model-info">
         <span class="model-info-text">
-            {models_info} | Spread Validated: 59.9% win rate | Totals: 74.7% win rate
+            {models_info} | Spread Validated: 59.9% win rate | Totals: 74.7% win rate{retrain_info}
         </span>
     </div>
     """, unsafe_allow_html=True)

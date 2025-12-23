@@ -1,0 +1,19 @@
+{
+  "last_retrain": "2025-12-23T14:00:00",
+  "last_retrain_reason": "initial",
+  "model_version": "v18_stacking_20251223",
+  "weeks_since_retrain": 0,
+  "games_since_retrain": 0,
+  "games_at_last_retrain": 15025,
+  "rolling_4week_accuracy": 0.6666666666666666,
+  "rolling_4week_mae": 9.098161998324242,
+  "rolling_4week_roi": 17.605923488276424,
+  "consecutive_bad_weeks": 0,
+  "trigger_thresholds": {
+    "accuracy": 0.48,
+    "roi": -0.05,
+    "consecutive_bad": 2,
+    "new_games": 100
+  },
+  "history": []
+}

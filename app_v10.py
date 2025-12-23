@@ -37,6 +37,27 @@ from config import CFBD_API_KEY
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+# =============================================================================
+# PASSWORD PROTECTION
+# =============================================================================
+def check_password():
+    """Simple password protection for the app."""
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+
+    if not st.session_state.authenticated:
+        st.title("🔒 Login Required")
+        st.markdown("Enter your password to access Sharp Picks.")
+        password = st.text_input("Password:", type="password")
+        if st.button("Login", type="primary"):
+            if password == st.secrets.get("APP_PASSWORD", ""):
+                st.session_state.authenticated = True
+                st.rerun()
+            else:
+                st.error("Incorrect password")
+        st.stop()
+
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
@@ -108,8 +129,11 @@ V16_UNCERTAINTY_FEATURES = [
 # Full feature list for V16 (68 features)
 SAFE_FEATURES = SAFE_FEATURES_V15 + V16_UNCERTAINTY_FEATURES
 
-# Page config
+# Page config - must be first Streamlit command
 st.set_page_config(page_title="Sharp Picks V10", page_icon="$", layout="wide")
+
+# Check password before showing any content
+check_password()
 
 # =============================================================================
 # CUSTOM CSS

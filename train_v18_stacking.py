@@ -28,16 +28,18 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 try:
     from lightgbm import LGBMRegressor
     HAS_LGBM = True
-except ImportError:
+except (ImportError, OSError) as e:
     HAS_LGBM = False
-    print("LightGBM not available, skipping...")
+    LGBMRegressor = None
+    print(f"LightGBM not available (libomp missing?), skipping...")
 
 try:
     from catboost import CatBoostRegressor
     HAS_CATBOOST = True
-except ImportError:
+except (ImportError, OSError) as e:
     HAS_CATBOOST = False
-    print("CatBoost not available, skipping...")
+    CatBoostRegressor = None
+    print(f"CatBoost not available, skipping...")
 
 
 # ============================================================
@@ -292,7 +294,7 @@ def train_stacking_ensemble(df, feature_cols, params_dict):
 
     # Train Bayesian meta-learner
     print("\nTraining Bayesian meta-learner...")
-    meta_learner = BayesianRidge(n_iter=1000, compute_score=True)
+    meta_learner = BayesianRidge(max_iter=1000, compute_score=True)
     meta_learner.fit(X_meta_full, y_train)
 
     # Also train simple RidgeCV for comparison

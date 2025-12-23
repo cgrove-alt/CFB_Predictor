@@ -52,6 +52,53 @@ except Exception as e:
     print("  Will use wind_speed = 0 as fallback")
 
 # ============================================================
+# FETCH TURNOVER DATA (V18 Enhancement)
+# ============================================================
+print("\nFetching Turnover Data...")
+turnover_data = []
+
+try:
+    for year in years:
+        print(f"  Fetching turnovers for {year}...")
+        for week in range(1, 20):
+            try:
+                # Get team game stats which includes turnovers, fumbles, interceptions
+                stats = games_api.get_team_game_stats(year=year, week=week)
+                if stats:
+                    for game in stats:
+                        game_id = game.id
+                        for team_data in game.teams:
+                            team_name = team_data.school
+                            turnovers_lost = 0
+                            fumbles_lost = 0
+                            interceptions = 0
+
+                            # Parse stats to find turnovers
+                            if team_data.stats:
+                                for s in team_data.stats:
+                                    cat = s.category.lower() if s.category else ''
+                                    if 'turnovers' in cat and 'lost' in cat:
+                                        turnovers_lost = float(s.stat) if s.stat else 0
+                                    elif 'fumbles' in cat and 'lost' in cat:
+                                        fumbles_lost = float(s.stat) if s.stat else 0
+                                    elif 'interceptions' in cat and 'thrown' in cat:
+                                        interceptions = float(s.stat) if s.stat else 0
+
+                            turnover_data.append({
+                                'game_id': game_id,
+                                'team': team_name,
+                                'turnovers_lost': turnovers_lost,
+                                'fumbles_lost': fumbles_lost,
+                                'interceptions_thrown': interceptions,
+                            })
+            except Exception as e:
+                continue
+    print(f"  Total turnover records: {len(turnover_data)}")
+except Exception as e:
+    print(f"  Error fetching turnover data: {str(e)[:100]}")
+    print("  Will skip turnover features")
+
+# ============================================================
 # FETCH ADVANCED GAME STATS
 # ============================================================
 print("\nFetching Advanced Team Game Stats...")
@@ -185,6 +232,63 @@ games_df = games_df.merge(
 ).drop(columns=['game_id', 'team'], errors='ignore')
 
 # ============================================================
+# MERGE TURNOVER DATA (V18 Enhancement)
+# ============================================================
+print("\nMerging turnover data...")
+if turnover_data:
+    turnover_df = pd.DataFrame(turnover_data)
+
+    # Create home team turnover stats
+    home_to = turnover_df.copy()
+    home_to = home_to.rename(columns={
+        'turnovers_lost': 'home_turnovers_lost',
+        'fumbles_lost': 'home_fumbles_lost',
+        'interceptions_thrown': 'home_interceptions',
+    })
+
+    # Create away team turnover stats
+    away_to = turnover_df.copy()
+    away_to = away_to.rename(columns={
+        'turnovers_lost': 'away_turnovers_lost',
+        'fumbles_lost': 'away_fumbles_lost',
+        'interceptions_thrown': 'away_interceptions',
+    })
+
+    # Merge home turnovers
+    games_df = games_df.merge(
+        home_to[['game_id', 'team', 'home_turnovers_lost', 'home_fumbles_lost', 'home_interceptions']],
+        left_on=['id', 'home_team'],
+        right_on=['game_id', 'team'],
+        how='left'
+    ).drop(columns=['game_id', 'team'], errors='ignore')
+
+    # Merge away turnovers
+    games_df = games_df.merge(
+        away_to[['game_id', 'team', 'away_turnovers_lost', 'away_fumbles_lost', 'away_interceptions']],
+        left_on=['id', 'away_team'],
+        right_on=['game_id', 'team'],
+        how='left'
+    ).drop(columns=['game_id', 'team'], errors='ignore')
+
+    # Calculate turnover margin (turnovers forced - turnovers lost)
+    # Note: Team A's turnovers lost = Team B's turnovers forced
+    games_df['home_turnovers_forced'] = games_df['away_turnovers_lost'].fillna(0)
+    games_df['away_turnovers_forced'] = games_df['home_turnovers_lost'].fillna(0)
+    games_df['home_turnover_margin'] = games_df['home_turnovers_forced'] - games_df['home_turnovers_lost'].fillna(0)
+    games_df['away_turnover_margin'] = games_df['away_turnovers_forced'] - games_df['away_turnovers_lost'].fillna(0)
+    games_df['turnover_margin_diff'] = games_df['home_turnover_margin'] - games_df['away_turnover_margin']
+
+    print(f"  Games with turnover data: {games_df['home_turnovers_lost'].notna().sum()}")
+else:
+    print("  No turnover data available, skipping...")
+    # Set default values
+    games_df['home_turnovers_lost'] = 0
+    games_df['away_turnovers_lost'] = 0
+    games_df['home_turnover_margin'] = 0
+    games_df['away_turnover_margin'] = 0
+    games_df['turnover_margin_diff'] = 0
+
+# ============================================================
 # FILL MISSING EPA WITH SEASON AVERAGES
 # ============================================================
 print("\nFilling missing EPA with season averages...")
@@ -248,4 +352,5 @@ print("="*70)
 print(f"Total games: {len(games_df)}")
 print(f"Games with wind_speed data: {(games_df['wind_speed'] > 0).sum()} (rest set to 0)")
 print(f"Games with EPA data: {home_epa_count}")
+print(f"Games with turnover data: {len(turnover_data)}")
 print(f"Weather API status: {'Available' if weather_available else 'Requires Patreon Tier 1+'}")

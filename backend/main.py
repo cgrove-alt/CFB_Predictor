@@ -473,9 +473,17 @@ async def get_predictions(
 
     # Merge lines: prefer live odds, fall back to CFBD
     lines_dict = {}
+    valid_games = []
     for game in games:
         home = game.get('home_team')
         away = game.get('away_team')
+
+        # Skip games with missing team names
+        if not home or not away:
+            logger.warning(f"Skipping game with missing team in predictions: home={home}, away={away}")
+            continue
+
+        valid_games.append(game)
 
         # Check for live odds first
         live_spread = get_spread_for_game(home, away, live_odds)
@@ -501,7 +509,7 @@ async def get_predictions(
     # Generate predictions
     try:
         predictions_data = generate_predictions(
-            games=games,
+            games=valid_games,
             lines_dict=lines_dict,
             season=season,
             week=week,

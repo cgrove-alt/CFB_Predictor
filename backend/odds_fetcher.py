@@ -137,6 +137,9 @@ def _normalize_team_name(name: str) -> str:
 
     The Odds API and CFBD may use different team names.
     """
+    if name is None:
+        return ''
+
     # Common normalizations
     replacements = {
         'State': 'St',

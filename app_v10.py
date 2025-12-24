@@ -211,6 +211,31 @@ def get_custom_css():
         color: white;
     }
 
+    /* V19 bet recommendation badges */
+    .bet-rec-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-left: 6px;
+        margin-bottom: 8px;
+    }
+    .bet-rec-bet {
+        background: #10B981;
+        color: white;
+    }
+    .bet-rec-lean {
+        background: #3B82F6;
+        color: white;
+    }
+    .bet-rec-pass {
+        background: #6B7280;
+        color: white;
+    }
+
     .bet-instruction {
         font-size: 26px;
         font-weight: 700;
@@ -492,6 +517,28 @@ def load_spread_error_model():
         return model, 'cfb_v18_stacking.pkl'
     except Exception as e:
         st.error(f"Failed to load V18 model: {e}")
+        return None, None
+
+
+@st.cache_resource
+def load_v19_dual_model():
+    """Load V19 dual-target model (margin + cover probability).
+
+    V19 improvements:
+    - Dual-target: margin prediction + cover probability classification
+    - Calibrated probabilities using isotonic regression
+    - MAE = 9.28 | Cover Accuracy = 66.8% | Brier = 0.189
+    """
+    try:
+        from train_v19_dual import V19DualTargetModel
+        model = V19DualTargetModel.load('cfb_v19')
+        logger.info(f"Loaded V19 dual model: {model.config.get('version', 'V19')}")
+        return model, 'cfb_v19_dual.pkl'
+    except FileNotFoundError:
+        logger.info("V19 model files not found - will use V18 fallback")
+        return None, None
+    except Exception as e:
+        logger.warning(f"Failed to load V19 model: {e}")
         return None, None
 
 
@@ -857,6 +904,199 @@ def calculate_safe_features_for_game(home, away, history_df, season, week, vegas
     return features
 
 
+def calculate_v19_features_for_game(home, away, history_df, season, week, vegas_spread, spread_open=None, line_movement=0):
+    """Calculate features for V19 model (52 features).
+
+    V19 uses a refined feature set that:
+    - Adds: home_rest_days, away_rest_days, vegas_spread, spread_open
+    - Removes: constant/zero features (lookahead, comp_success, comp_epa, comp_ypp, etc.)
+    """
+
+    def get_team_recent_stats(team, is_home):
+        """Get most recent stats for a team from historical data."""
+        if is_home:
+            games = history_df[(history_df['home_team'] == team) &
+                              ((history_df['season'] < season) |
+                               ((history_df['season'] == season) & (history_df['week'] < week)))]
+            prefix = 'home'
+        else:
+            games = history_df[(history_df['away_team'] == team) &
+                              ((history_df['season'] < season) |
+                               ((history_df['season'] == season) & (history_df['week'] < week)))]
+            prefix = 'away'
+
+        if len(games) > 0:
+            recent = games.sort_values(['season', 'week'], ascending=False).iloc[0]
+            return {
+                'pregame_elo': recent.get(f'{prefix}_pregame_elo', 1500),
+                'last5_score_avg': recent.get(f'{prefix}_last5_score_avg', 28),
+                'last5_defense_avg': recent.get(f'{prefix}_last5_defense_avg', 24),
+                'team_hfa': recent.get(f'{prefix}_team_hfa', 2.0 if is_home else 0),
+                'rest_days': recent.get(f'{prefix}_rest_days', 7),
+                'streak': recent.get(f'{prefix}_streak', 0),
+                'ats': recent.get(f'{prefix}_ats', 0.5),
+                'elo_momentum': recent.get(f'{prefix}_elo_momentum', 0),
+                'scoring_trend': recent.get(f'{prefix}_scoring_trend', 0),
+                'short_rest': recent.get(f'{prefix}_short_rest', 0),
+                'comp_off_ppa': recent.get(f'{prefix}_comp_off_ppa', 0),
+                'comp_def_ppa': recent.get(f'{prefix}_comp_def_ppa', 0),
+                'comp_pass_ppa': recent.get(f'{prefix}_comp_pass_ppa', 0),
+                'comp_rush_ppa': recent.get(f'{prefix}_comp_rush_ppa', 0),
+            }
+        else:
+            # Check alternate role
+            alt_prefix = 'away' if is_home else 'home'
+            alt_games = history_df[(history_df[f'{alt_prefix}_team'] == team) &
+                                   ((history_df['season'] < season) |
+                                    ((history_df['season'] == season) & (history_df['week'] < week)))]
+            if len(alt_games) > 0:
+                recent = alt_games.sort_values(['season', 'week'], ascending=False).iloc[0]
+                return {
+                    'pregame_elo': recent.get(f'{alt_prefix}_pregame_elo', 1500),
+                    'last5_score_avg': recent.get(f'{alt_prefix}_last5_score_avg', 28),
+                    'last5_defense_avg': recent.get(f'{alt_prefix}_last5_defense_avg', 24),
+                    'team_hfa': 2.0 if is_home else 0,
+                    'rest_days': recent.get(f'{alt_prefix}_rest_days', 7),
+                    'streak': recent.get(f'{alt_prefix}_streak', 0),
+                    'ats': recent.get(f'{alt_prefix}_ats', 0.5),
+                    'elo_momentum': recent.get(f'{alt_prefix}_elo_momentum', 0),
+                    'scoring_trend': recent.get(f'{alt_prefix}_scoring_trend', 0),
+                    'short_rest': recent.get(f'{alt_prefix}_short_rest', 0),
+                    'comp_off_ppa': recent.get(f'{alt_prefix}_comp_off_ppa', 0),
+                    'comp_def_ppa': recent.get(f'{alt_prefix}_comp_def_ppa', 0),
+                    'comp_pass_ppa': recent.get(f'{alt_prefix}_comp_pass_ppa', 0),
+                    'comp_rush_ppa': recent.get(f'{alt_prefix}_comp_rush_ppa', 0),
+                }
+
+        # Default values
+        return {
+            'pregame_elo': 1500,
+            'last5_score_avg': 28,
+            'last5_defense_avg': 24,
+            'team_hfa': 2.0 if is_home else 0,
+            'rest_days': 7,
+            'streak': 0,
+            'ats': 0.5,
+            'elo_momentum': 0,
+            'scoring_trend': 0,
+            'short_rest': 0,
+            'comp_off_ppa': 0,
+            'comp_def_ppa': 0,
+            'comp_pass_ppa': 0,
+            'comp_rush_ppa': 0,
+        }
+
+    home_stats = get_team_recent_stats(home, is_home=True)
+    away_stats = get_team_recent_stats(away, is_home=False)
+
+    # Derived features
+    elo_diff = home_stats['pregame_elo'] - away_stats['pregame_elo']
+    hfa_diff = home_stats['team_hfa'] - away_stats['team_hfa']
+    rest_diff = home_stats['rest_days'] - away_stats['rest_days']
+    streak_diff = home_stats['streak'] - away_stats['streak']
+    ats_diff = home_stats['ats'] - away_stats['ats']
+    elo_momentum_diff = home_stats['elo_momentum'] - away_stats['elo_momentum']
+
+    # Vegas features
+    if spread_open is None:
+        spread_open = vegas_spread  # Default to closing if no opening available
+    large_favorite = 1 if vegas_spread < -14 else 0
+    large_underdog = 1 if vegas_spread > 14 else 0
+    close_game = 1 if abs(vegas_spread) < 7 else 0
+    elo_vs_spread = (elo_diff / 25) - vegas_spread
+    rest_spread_interaction = rest_diff * abs(vegas_spread) / 10
+
+    # PPA-derived
+    pass_efficiency_diff = home_stats['comp_pass_ppa'] - away_stats['comp_pass_ppa']
+    matchup_efficiency = (home_stats['comp_off_ppa'] - away_stats['comp_off_ppa']) + \
+                         (away_stats['comp_def_ppa'] - home_stats['comp_def_ppa'])
+    home_pass_rush_balance = home_stats['comp_pass_ppa'] - home_stats['comp_rush_ppa']
+    away_pass_rush_balance = away_stats['comp_pass_ppa'] - away_stats['comp_rush_ppa']
+    elo_efficiency_interaction = elo_diff * (home_stats['comp_off_ppa'] - away_stats['comp_off_ppa'])
+    momentum_strength = (home_stats['streak'] - away_stats['streak']) * \
+                        (home_stats['last5_score_avg'] - away_stats['last5_score_avg']) / 100
+    dominant_home = 1 if (elo_diff > 150 and (home_stats['comp_off_ppa'] - away_stats['comp_off_ppa']) > 0.5) else 0
+    dominant_away = 1 if (elo_diff < -150 and (away_stats['comp_off_ppa'] - home_stats['comp_off_ppa']) > 0.5) else 0
+    rest_favorite_interaction = rest_diff * (1 if vegas_spread < -7 else 0)
+    has_line_movement = 1 if (line_movement and abs(line_movement) > 0) else 0
+    expected_total = home_stats['last5_score_avg'] + away_stats['last5_score_avg']
+
+    # Build V19 feature array (52 features in V19_FEATURES order)
+    features = np.array([[
+        # Core power ratings (3)
+        home_stats['pregame_elo'],           # home_pregame_elo
+        away_stats['pregame_elo'],           # away_pregame_elo
+        elo_diff,                            # elo_diff
+
+        # Rolling performance (4)
+        home_stats['last5_score_avg'],       # home_last5_score_avg
+        away_stats['last5_score_avg'],       # away_last5_score_avg
+        home_stats['last5_defense_avg'],     # home_last5_defense_avg
+        away_stats['last5_defense_avg'],     # away_last5_defense_avg
+
+        # Home field advantage (2)
+        home_stats['team_hfa'],              # home_team_hfa
+        hfa_diff,                            # hfa_diff
+
+        # Scheduling factors (5) - INCLUDES individual rest days
+        rest_diff,                           # rest_diff
+        home_stats['rest_days'],             # home_rest_days
+        away_stats['rest_days'],             # away_rest_days
+        home_stats['short_rest'],            # home_short_rest
+        away_stats['short_rest'],            # away_short_rest
+
+        # Vegas features (8) - INCLUDES vegas_spread and spread_open
+        vegas_spread,                        # vegas_spread
+        line_movement if line_movement else 0,  # line_movement
+        spread_open,                         # spread_open
+        large_favorite,                      # large_favorite
+        large_underdog,                      # large_underdog
+        close_game,                          # close_game
+        elo_vs_spread,                       # elo_vs_spread
+        rest_spread_interaction,             # rest_spread_interaction
+
+        # Momentum features (11)
+        home_stats['streak'],                # home_streak
+        away_stats['streak'],                # away_streak
+        streak_diff,                         # streak_diff
+        home_stats['ats'],                   # home_ats
+        away_stats['ats'],                   # away_ats
+        ats_diff,                            # ats_diff
+        home_stats['elo_momentum'],          # home_elo_momentum
+        away_stats['elo_momentum'],          # away_elo_momentum
+        elo_momentum_diff,                   # elo_momentum_diff
+        home_stats['scoring_trend'],         # home_scoring_trend
+        away_stats['scoring_trend'],         # away_scoring_trend
+
+        # PPA efficiency (9) - EXCLUDES success, epa, ypp (always 0)
+        home_stats['comp_off_ppa'],          # home_comp_off_ppa
+        away_stats['comp_off_ppa'],          # away_comp_off_ppa
+        home_stats['comp_def_ppa'],          # home_comp_def_ppa
+        away_stats['comp_def_ppa'],          # away_comp_def_ppa
+        home_stats['comp_pass_ppa'],         # home_comp_pass_ppa
+        away_stats['comp_pass_ppa'],         # away_comp_pass_ppa
+        home_stats['comp_rush_ppa'],         # home_comp_rush_ppa
+        away_stats['comp_rush_ppa'],         # away_comp_rush_ppa
+        pass_efficiency_diff,                # pass_efficiency_diff
+
+        # Composite features (9) - EXCLUDES success_rate_diff
+        matchup_efficiency,                  # matchup_efficiency
+        home_pass_rush_balance,              # home_pass_rush_balance
+        away_pass_rush_balance,              # away_pass_rush_balance
+        elo_efficiency_interaction,          # elo_efficiency_interaction
+        momentum_strength,                   # momentum_strength
+        dominant_home,                       # dominant_home
+        dominant_away,                       # dominant_away
+        rest_favorite_interaction,           # rest_favorite_interaction
+        has_line_movement,                   # has_line_movement
+
+        # Expected total (1)
+        expected_total,                      # expected_total
+    ]])
+
+    return features
+
+
 # =============================================================================
 # KELLY CRITERION
 # =============================================================================
@@ -1207,6 +1447,128 @@ def generate_spread_error_predictions(games, lines_dict, model, history_df, seas
     return pd.DataFrame(predictions)
 
 
+def generate_v19_predictions(games, lines_dict, model, history_df, season, week, bankroll):
+    """Generate predictions using V19 dual-target model.
+
+    V19 provides:
+    - predicted_margin: Raw margin prediction
+    - predicted_edge: Edge vs Vegas (same as V18 spread_error)
+    - cover_probability: Calibrated probability of covering spread
+    - confidence_tier: Model-determined tier (HIGH/MEDIUM/LOW)
+    - bet_recommendation: BET/LEAN/PASS based on edge + probability
+    - pick_side: HOME/AWAY
+    """
+    predictions = []
+
+    if 'prediction_error' in st.session_state:
+        del st.session_state['prediction_error']
+
+    for game in games:
+        try:
+            home, away = game['homeTeam'], game['awayTeam']
+            if not home or not away or home not in lines_dict:
+                continue
+
+            vegas_spread = lines_dict[home]['spread_current']
+            line_movement = lines_dict[home]['line_movement']
+            spread_open = lines_dict[home].get('spread_open', vegas_spread)
+
+            # Calculate V19 features (52 features)
+            features = calculate_v19_features_for_game(
+                home, away, history_df, season, week, vegas_spread,
+                spread_open=spread_open, line_movement=line_movement
+            )
+
+            # Get V19 prediction (returns list of dicts)
+            # Pass vegas_spread explicitly since features is a numpy array
+            result = model.predict(features, vegas_spread=vegas_spread)[0]
+
+            # Extract V19 fields
+            pred_spread_error = result['predicted_edge']
+            cover_prob = result['cover_probability']
+            predicted_margin = result['predicted_margin']
+            confidence_tier = result['confidence_tier']
+            bet_recommendation = result['bet_recommendation']
+            pick_side = result['pick_side']
+            game_quality = result.get('game_quality_score', 0.5)
+
+            # Determine signal from pick_side
+            if pick_side == 'HOME':
+                signal = 'BUY'
+                team_to_bet = home
+                opponent = away
+                spread_to_bet = vegas_spread
+            else:
+                signal = 'FADE'
+                team_to_bet = away
+                opponent = home
+                spread_to_bet = -vegas_spread
+
+            # Map confidence tier to CSS class and emoji
+            tier_mapping = {
+                'HIGH': ('confidence-high', '🔥'),
+                'MEDIUM-HIGH': ('confidence-medium-high', '✅'),
+                'MEDIUM': ('confidence-medium', '⚠️'),
+                'LOW': ('confidence-low', '⚡'),
+                'VERY LOW': ('confidence-very-low', '❄️'),
+            }
+            confidence_class, confidence_emoji = tier_mapping.get(
+                confidence_tier, ('confidence-medium', '⚠️')
+            )
+
+            # Calculate bet size using cover probability directly
+            # V19 provides calibrated probabilities, so we use them directly
+            edge = cover_prob - 0.5  # Edge over 50%
+            if edge > 0:
+                # Simple Kelly: edge / odds (assuming -110 odds = 1.91 decimal)
+                kelly_fraction = edge / 0.91  # Simplified Kelly
+                kelly_fraction = min(kelly_fraction, 0.05)  # Cap at 5%
+                bet_size = bankroll * kelly_fraction
+            else:
+                bet_size = 0
+
+            # Adjust bet size based on recommendation
+            if bet_recommendation == 'PASS':
+                bet_size = 0
+            elif bet_recommendation == 'LEAN':
+                bet_size = bet_size * 0.5  # Half size for leans
+
+            predictions.append({
+                'Home': home,
+                'Away': away,
+                'Game': f"{away} @ {home}",
+                'Signal': signal,
+                'team_to_bet': team_to_bet,
+                'opponent': opponent,
+                'spread_to_bet': spread_to_bet,
+                'vegas_spread': vegas_spread,
+                'spread_error': pred_spread_error,
+                'predicted_margin': predicted_margin,
+                'win_prob': cover_prob,  # V19: this is calibrated cover probability
+                'cover_probability': cover_prob,  # Also store explicitly
+                'bet_size': bet_size,
+                'line_movement': line_movement,
+                'confidence_tier': confidence_tier,
+                'confidence_class': confidence_class,
+                'confidence_emoji': confidence_emoji,
+                'bet_recommendation': bet_recommendation,
+                'game_quality': game_quality,
+                'start_date': game.get('start_date'),
+                'completed': game.get('completed', False),
+                # V19 doesn't use quantile intervals
+                'lower_bound': None,
+                'upper_bound': None,
+                'interval_width': None,
+                'interval_crosses_zero': None,
+            })
+        except Exception as e:
+            logger.error(f"V19 error predicting {game.get('awayTeam', '?')} @ {game.get('homeTeam', '?')}: {e}")
+            if 'prediction_error' not in st.session_state:
+                st.session_state['prediction_error'] = str(e)
+
+    return pd.DataFrame(predictions)
+
+
 # =============================================================================
 # TOTALS PREDICTIONS
 # =============================================================================
@@ -1461,6 +1823,17 @@ def render_bet_card(bet, is_hero=False):
     conf_emoji = bet.get('confidence_emoji', '⚠️')
     conf_badge = f'<span class="confidence-badge {conf_class}">{conf_emoji} {conf_tier}</span>'
 
+    # V19 bet recommendation badge (BET/LEAN/PASS)
+    bet_rec = bet.get('bet_recommendation', '')
+    rec_badge = ""
+    if bet_rec:
+        if bet_rec == 'BET':
+            rec_badge = '<span class="bet-rec-badge bet-rec-bet">BET</span>'
+        elif bet_rec == 'LEAN':
+            rec_badge = '<span class="bet-rec-badge bet-rec-lean">LEAN</span>'
+        elif bet_rec == 'PASS':
+            rec_badge = '<span class="bet-rec-badge bet-rec-pass">PASS</span>'
+
     # Get game status badge
     game_time_badge = ""
     start_date = bet.get('start_date')
@@ -1475,7 +1848,7 @@ def render_bet_card(bet, is_hero=False):
     instruction_class = "bet-instruction-hero" if is_hero else "bet-instruction"
     amount_class = "bet-amount-hero" if is_hero else "bet-amount"
 
-    # Build interval display if available
+    # Build interval display if available (V18 only)
     interval_html = ""
     lower = bet.get('lower_bound')
     upper = bet.get('upper_bound')
@@ -1491,13 +1864,19 @@ def render_bet_card(bet, is_hero=False):
             interval_icon = "~"
         interval_html = f'<div class="interval" style="color: {interval_color}; font-size: 0.85rem;">{interval_icon} 80% range: {lower:+.1f} to {upper:+.1f}</div>'
 
+    # V19: Use "Cover Probability" if we have cover_probability field
+    if 'cover_probability' in bet and bet['cover_probability'] is not None:
+        prob_label = "Cover Probability"
+    else:
+        prob_label = "Est. Win Probability"
+
     html = f"""
     <div class="bet-card {signal_class}">
-        {conf_badge}
+        {conf_badge}{rec_badge}
         <div class="{instruction_class}">BET: {bet['team_to_bet']} {spread_str}</div>
         <div class="opponent">vs {bet['opponent']}{game_time_badge}</div>
         <div class="{amount_class}">${bet['bet_size']:.0f}</div>
-        <div class="win-prob">{bet['win_prob']*100:.0f}% Est. Win Probability</div>
+        <div class="win-prob">{bet['win_prob']*100:.0f}% {prob_label}</div>
         <div class="spread-error">Predicted edge: {abs(bet['spread_error']):.1f} pts vs Vegas</div>
         {interval_html}
     </div>
@@ -1685,17 +2064,47 @@ with st.expander("⚙️ Change Season/Week", expanded=False):
     with adv_col3:
         week = st.number_input("Week", min_value=0, max_value=20, value=auto_week, key="manual_week")
 
-# Model info
-model, model_file = load_spread_error_model()
+# BET/LEAN/PASS recommendation guide
+with st.expander("📊 BET / LEAN / PASS Guide", expanded=False):
+    st.markdown("""
+**BET** - Strong edge + high confidence
+- Edge >= 4.5 points vs Vegas
+- Cover probability >= 65% (or <= 35%)
+- *Recommended: Full stake*
+
+**LEAN** - Moderate edge + decent confidence
+- Edge >= 3.0 points vs Vegas
+- Cover probability >= 60% (or <= 40%)
+- *Recommended: Half stake*
+
+**PASS** - Insufficient edge or confidence
+- Doesn't meet BET/LEAN criteria
+- Or game quality is poor
+- *Recommended: Skip this game*
+    """)
+
+# Model info - Try V19 first, fall back to V18
+v19_model, v19_model_file = load_v19_dual_model()
+if v19_model:
+    model = v19_model
+    model_file = v19_model_file
+    model_version = 'V19'
+else:
+    model, model_file = load_spread_error_model()
+    model_version = 'V18'
+
 totals_model, totals_model_file = load_totals_model()
 quantile_model, quantile_model_file = load_quantile_model()
 
 if model:
-    models_info = f"Spread: {model_file}"
+    if model_version == 'V19':
+        models_info = "V19 Dual Model | MAE: 9.28 | Cover: 66.8%"
+    else:
+        models_info = f"Spread: {model_file}"
+        if quantile_model:
+            models_info += " | Intervals: V17"
     if totals_model:
         models_info += f" | Totals: {totals_model_file}"
-    if quantile_model:
-        models_info += " | Intervals: V17"
     st.markdown(f"""
     <div class="model-info">
         <span class="model-info-text">
@@ -1811,21 +2220,33 @@ else:
     st.warning("⚠️ No betting lines available from API - check connection")
 
 # Generate predictions for UPCOMING games only (for picks tabs)
-with st.spinner("Generating spread error predictions..."):
-    df_predictions = generate_spread_error_predictions(
-        upcoming_games if upcoming_games else games,  # Fall back to all if no upcoming
-        lines_dict, model, history_df, season, week, bankroll,
-        quantile_model=quantile_model
-    )
+spinner_text = "Generating V19 predictions..." if model_version == 'V19' else "Generating spread error predictions..."
+with st.spinner(spinner_text):
+    if model_version == 'V19':
+        df_predictions = generate_v19_predictions(
+            upcoming_games if upcoming_games else games,
+            lines_dict, model, history_df, season, week, bankroll
+        )
+    else:
+        df_predictions = generate_spread_error_predictions(
+            upcoming_games if upcoming_games else games,  # Fall back to all if no upcoming
+            lines_dict, model, history_df, season, week, bankroll,
+            quantile_model=quantile_model
+        )
 
 # Generate predictions for COMPLETED games (for results tab)
 df_completed_predictions = pd.DataFrame()
 if completed_games:
     with st.spinner("Loading historical results..."):
-        df_completed_predictions = generate_spread_error_predictions(
-            completed_games, lines_dict, model, history_df, season, week, bankroll,
-            quantile_model=quantile_model
-        )
+        if model_version == 'V19':
+            df_completed_predictions = generate_v19_predictions(
+                completed_games, lines_dict, model, history_df, season, week, bankroll
+            )
+        else:
+            df_completed_predictions = generate_spread_error_predictions(
+                completed_games, lines_dict, model, history_df, season, week, bankroll,
+                quantile_model=quantile_model
+            )
 
 # Generate totals predictions if model is available (UPCOMING only)
 df_totals = pd.DataFrame()

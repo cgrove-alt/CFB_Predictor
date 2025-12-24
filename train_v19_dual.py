@@ -353,9 +353,13 @@ class V19DualTargetModel:
 
         return self
 
-    def predict(self, X):
+    def predict(self, X, vegas_spread=None):
         """
         Make predictions with both models.
+
+        Args:
+            X: Features array/DataFrame
+            vegas_spread: Optional vegas spread (used if X is numpy array)
 
         Returns dict with:
         - predicted_margin: Predicted home team margin
@@ -364,8 +368,15 @@ class V19DualTargetModel:
         - confidence_tier: HIGH/MEDIUM-HIGH/MEDIUM/LOW/VERY LOW
         - bet_recommendation: BET/LEAN/PASS
         """
-        # Fill missing values
-        X_filled = X.fillna(X.median())
+        # Handle numpy arrays vs DataFrames
+        if isinstance(X, np.ndarray):
+            # For numpy arrays, fill NaN with 0 and use default spread
+            X_filled = np.nan_to_num(X, nan=0.0)
+            is_array = True
+        else:
+            # For DataFrames, use fillna
+            X_filled = X.fillna(X.median())
+            is_array = False
 
         # Get predictions
         predicted_margin = self.margin_model.predict(X_filled)
@@ -378,16 +389,26 @@ class V19DualTargetModel:
             cover_prob = uncal_prob
 
         results = []
-        for i in range(len(X)):
+        for i in range(len(X_filled)):
             margin = predicted_margin[i]
             prob = cover_prob[i]
-            spread = X.iloc[i].get('vegas_spread', 0)
+
+            # Get spread: from parameter, from DataFrame column, or default
+            if vegas_spread is not None:
+                spread = vegas_spread
+            elif is_array:
+                spread = 0  # Default for numpy array without spread param
+            else:
+                spread = X.iloc[i].get('vegas_spread', 0)
 
             # Calculate edge
             edge = margin - (-spread)  # Positive = model says home beats spread
 
-            # Classify game type
-            game_type = classify_game_type(X.iloc[i])
+            # Classify game type (skip for numpy arrays - use neutral quality)
+            if is_array:
+                game_type = {'bet_quality_score': 0, 'game_type': 'UNKNOWN'}
+            else:
+                game_type = classify_game_type(X.iloc[i])
 
             # Determine confidence tier based on calibrated probability
             if prob >= 0.65 or prob <= 0.35:

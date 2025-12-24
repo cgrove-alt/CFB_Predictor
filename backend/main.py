@@ -499,7 +499,8 @@ async def get_predictions(
     cfbd_lines = fetch_lines_from_cfbd(season, week, season_type)
     logger.info(f"Fetched {len(cfbd_lines)} lines from CFBD")
 
-    # Merge lines: prefer live odds, fall back to CFBD
+    # Merge lines: CFBD primary (has historical opening spread), live odds supplementary
+    # This matches Streamlit app behavior for consistent predictions
     lines_dict = {}
     valid_games = []
     for game in games:
@@ -513,23 +514,35 @@ async def get_predictions(
 
         valid_games.append(game)
 
-        # Check for live odds first
-        live_spread = get_spread_for_game(home, away, live_odds)
-        if live_spread is not None:
-            # Get live odds data
-            live_data = live_odds.get(home, {})
-            lines_dict[home] = {
-                'spread_current': live_spread,
-                'spread_opening': live_spread,  # Live odds don't have opening
-                'line_movement': 0,
-                'over_under': None,
-                'provider': live_data.get('provider', 'The Odds API'),
-            }
-            logger.debug(f"Using live odds for {home}: {live_spread}")
-        elif home in cfbd_lines:
-            # Fall back to CFBD
-            lines_dict[home] = cfbd_lines[home]
-            logger.debug(f"Using CFBD for {home}")
+        # CFBD first - has historical opening spread for accurate line_movement calculation
+        if home in cfbd_lines:
+            # Start with CFBD data (has historical opening)
+            line_data = cfbd_lines[home].copy()
+
+            # Optionally update spread_current with live odds if more recent
+            live_spread = get_spread_for_game(home, away, live_odds)
+            if live_spread is not None:
+                # Update current spread but keep CFBD's opening for line_movement calc
+                opening = line_data.get('spread_opening', line_data['spread_current'])
+                line_data['spread_current'] = live_spread
+                line_data['line_movement'] = live_spread - opening
+                line_data['provider'] = 'The Odds API + CFBD'
+                logger.debug(f"Updated {home} with live spread {live_spread} (opening: {opening})")
+
+            lines_dict[home] = line_data
+            logger.debug(f"Using CFBD for {home}: {line_data['spread_current']}")
+        else:
+            # Only use Odds API if CFBD doesn't have this game
+            live_spread = get_spread_for_game(home, away, live_odds)
+            if live_spread is not None:
+                lines_dict[home] = {
+                    'spread_current': live_spread,
+                    'spread_opening': live_spread,
+                    'line_movement': 0,
+                    'over_under': None,
+                    'provider': 'The Odds API (no CFBD)',
+                }
+                logger.debug(f"Using live odds only for {home}: {live_spread} (no CFBD data)")
 
     if not lines_dict:
         raise HTTPException(status_code=404, detail="No betting lines available from either source")

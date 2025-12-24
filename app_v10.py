@@ -1471,7 +1471,7 @@ def generate_v19_predictions(games, lines_dict, model, history_df, season, week,
 
             vegas_spread = lines_dict[home]['spread_current']
             line_movement = lines_dict[home]['line_movement']
-            spread_open = lines_dict[home].get('spread_open', vegas_spread)
+            spread_open = lines_dict[home].get('spread_opening', vegas_spread)
 
             # Calculate V19 features (52 features)
             features = calculate_v19_features_for_game(

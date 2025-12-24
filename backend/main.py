@@ -465,11 +465,16 @@ async def get_predictions(
     cfbd_games = fetch_games_from_cfbd(season, week, season_type)
 
     # Filter valid CFBD games (with team names)
+    # Note: CFBD API returns camelCase (homeTeam), but we normalize to snake_case
     valid_cfbd_games = []
     for game in cfbd_games:
-        home = game.get('home_team')
-        away = game.get('away_team')
+        # Support both camelCase (CFBD) and snake_case (Odds API)
+        home = game.get('homeTeam') or game.get('home_team')
+        away = game.get('awayTeam') or game.get('away_team')
         if home and away:
+            # Normalize to snake_case for consistency
+            game['home_team'] = home
+            game['away_team'] = away
             valid_cfbd_games.append(game)
         else:
             logger.warning(f"Skipping CFBD game with missing team: home={home}, away={away}")

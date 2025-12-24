@@ -1,14 +1,14 @@
 'use client'
 
-import { RECOMMENDATION_COLORS, CONFIDENCE_COLORS } from '@/lib/types'
+import { RECOMMENDATION_COLORS, CONFIDENCE_COLORS, BetRecommendation, ConfidenceTier } from '@/lib/types'
 
 interface PredictionBadgeProps {
-  recommendation: string
+  recommendation: BetRecommendation
   size?: 'sm' | 'md' | 'lg'
 }
 
 export function PredictionBadge({ recommendation, size = 'md' }: PredictionBadgeProps) {
-  const colors = RECOMMENDATION_COLORS[recommendation] || RECOMMENDATION_COLORS.PASS
+  const colors = RECOMMENDATION_COLORS[recommendation]
 
   const sizeClasses = {
     sm: 'px-2 py-0.5 text-xs',
@@ -18,7 +18,7 @@ export function PredictionBadge({ recommendation, size = 'md' }: PredictionBadge
 
   return (
     <span
-      className={`${sizeClasses[size]} font-bold rounded-full ${colors.bg} ${colors.text} ${colors.border} border`}
+      className={`${sizeClasses[size]} font-bold rounded-full ${colors.bg} ${colors.text} ${colors.border || ''} border`}
     >
       {recommendation}
     </span>
@@ -26,12 +26,12 @@ export function PredictionBadge({ recommendation, size = 'md' }: PredictionBadge
 }
 
 interface ConfidenceBadgeProps {
-  tier: string
+  tier: ConfidenceTier
   size?: 'sm' | 'md'
 }
 
 export function ConfidenceBadge({ tier, size = 'sm' }: ConfidenceBadgeProps) {
-  const colors = CONFIDENCE_COLORS[tier] || CONFIDENCE_COLORS.LOW
+  const colors = CONFIDENCE_COLORS[tier]
 
   const sizeClasses = {
     sm: 'px-2 py-0.5 text-xs',

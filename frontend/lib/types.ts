@@ -75,16 +75,22 @@ export interface GamesResponse {
 export type ConfidenceTier = Prediction['confidence_tier'];
 export type BetRecommendation = Prediction['bet_recommendation'];
 
-export const CONFIDENCE_COLORS: Record<ConfidenceTier, string> = {
-  'HIGH': 'bg-emerald-500 text-white',
-  'MEDIUM-HIGH': 'bg-emerald-400 text-black',
-  'MEDIUM': 'bg-amber-500 text-black',
-  'LOW': 'bg-amber-400 text-black',
-  'VERY LOW': 'bg-red-500 text-white',
+interface ColorStyle {
+  bg: string;
+  text: string;
+  border?: string;
+}
+
+export const CONFIDENCE_COLORS: Record<ConfidenceTier, ColorStyle> = {
+  'HIGH': { bg: 'bg-emerald-500', text: 'text-white' },
+  'MEDIUM-HIGH': { bg: 'bg-emerald-400', text: 'text-black' },
+  'MEDIUM': { bg: 'bg-amber-500', text: 'text-black' },
+  'LOW': { bg: 'bg-amber-400', text: 'text-black' },
+  'VERY LOW': { bg: 'bg-red-500', text: 'text-white' },
 };
 
-export const RECOMMENDATION_COLORS: Record<BetRecommendation, string> = {
-  'BET': 'bg-emerald-500 text-white',
-  'LEAN': 'bg-blue-500 text-white',
-  'PASS': 'bg-slate-500 text-white',
+export const RECOMMENDATION_COLORS: Record<BetRecommendation, ColorStyle> = {
+  'BET': { bg: 'bg-emerald-500', text: 'text-white', border: 'border-emerald-400' },
+  'LEAN': { bg: 'bg-blue-500', text: 'text-white', border: 'border-blue-400' },
+  'PASS': { bg: 'bg-slate-500', text: 'text-white', border: 'border-slate-400' },
 };

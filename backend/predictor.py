@@ -80,6 +80,9 @@ class V19DualTargetModel:
         """
         Make predictions with both models.
 
+        IMPORTANT: This must match train_v19_dual.py exactly to ensure
+        identical predictions between Streamlit app and Railway backend.
+
         Args:
             X: Features array/DataFrame
             vegas_spread: Optional vegas spread (used if X is numpy array)
@@ -94,9 +97,11 @@ class V19DualTargetModel:
         """
         # Handle numpy arrays vs DataFrames
         if isinstance(X, np.ndarray):
+            # For numpy arrays, fill NaN with 0 and use default spread
             X_filled = np.nan_to_num(X, nan=0.0)
             is_array = True
         else:
+            # For DataFrames, use fillna
             X_filled = X.fillna(X.median())
             is_array = False
 
@@ -105,7 +110,7 @@ class V19DualTargetModel:
 
         # Get calibrated cover probability
         uncal_prob = self.cover_model.predict_proba(X_filled)[:, 1]
-        if self.calibrator is not None:
+        if hasattr(self, 'calibrator') and self.calibrator is not None:
             cover_prob = self.calibrator.transform(uncal_prob)
         else:
             cover_prob = uncal_prob
@@ -115,61 +120,51 @@ class V19DualTargetModel:
             margin = predicted_margin[i]
             prob = cover_prob[i]
 
-            # Get spread
+            # Get spread: from parameter, from DataFrame column, or default
             if vegas_spread is not None:
                 spread = vegas_spread
             elif is_array:
-                spread = 0
+                spread = 0  # Default for numpy array without spread param
             else:
                 spread = X.iloc[i].get('vegas_spread', 0)
 
             # Calculate edge
-            edge = margin - (-spread)
+            edge = margin - (-spread)  # Positive = model says home beats spread
 
-            # Determine confidence tier
+            # Classify game type (skip for numpy arrays - use neutral quality)
+            if is_array:
+                game_type = {'bet_quality_score': 0, 'game_type': 'UNKNOWN'}
+            else:
+                game_type = self._classify_game_type(X.iloc[i])
+
+            # Determine confidence tier based on calibrated probability
+            # Must match train_v19_dual.py exactly (5 tiers)
             if prob >= 0.65 or prob <= 0.35:
                 conf_tier = 'HIGH'
             elif prob >= 0.60 or prob <= 0.40:
                 conf_tier = 'MEDIUM-HIGH'
             elif prob >= 0.55 or prob <= 0.45:
                 conf_tier = 'MEDIUM'
-            else:
+            elif prob >= 0.52 or prob <= 0.48:
                 conf_tier = 'LOW'
-
-            # Determine pick side and effective probability
-            if margin > -spread:  # Model predicts home covers
-                pick_side = 'HOME'
-                effective_prob = prob
             else:
-                pick_side = 'AWAY'
-                effective_prob = 1 - prob
+                conf_tier = 'VERY LOW'
 
-            # Determine bet recommendation
+            # Bet recommendation with stricter thresholds
+            # Need both: good edge AND good probability AND good game type
+            # Must match train_v19_dual.py exactly
+            bet_home = edge > 0
             edge_abs = abs(edge)
             prob_confidence = abs(prob - 0.5)
 
-            # Calculate game quality score
-            bet_quality_score = 0
-            if edge_abs >= 5:
-                bet_quality_score += 2
-            elif edge_abs >= 3:
-                bet_quality_score += 1
-
-            if prob_confidence >= 0.15:
-                bet_quality_score += 2
-            elif prob_confidence >= 0.10:
-                bet_quality_score += 1
-
-            # Determine recommendation
-            if bet_quality_score <= -3:
+            # PASS if game type is bad
+            if game_type['bet_quality_score'] <= -3:
                 recommendation = 'PASS'
-            elif edge_abs < 3.0:
-                recommendation = 'PASS'
-            elif prob_confidence < 0.10:
-                recommendation = 'PASS'
-            elif conf_tier in ['HIGH', 'MEDIUM-HIGH'] and edge_abs >= 4.5:
+            # BET only if strong confidence AND good edge
+            elif edge_abs >= 4.5 and prob_confidence >= 0.15:
                 recommendation = 'BET'
-            elif conf_tier in ['HIGH', 'MEDIUM-HIGH'] or edge_abs >= 3.5:
+            # LEAN if moderate confidence
+            elif edge_abs >= 3.0 and prob_confidence >= 0.10:
                 recommendation = 'LEAN'
             else:
                 recommendation = 'PASS'
@@ -177,14 +172,47 @@ class V19DualTargetModel:
             results.append({
                 'predicted_margin': float(margin),
                 'predicted_edge': float(edge),
-                'cover_probability': float(effective_prob),
+                'cover_probability': float(prob),
                 'confidence_tier': conf_tier,
                 'bet_recommendation': recommendation,
-                'pick_side': pick_side,
-                'game_quality_score': bet_quality_score,
+                'pick_side': 'HOME' if bet_home else 'AWAY',
+                'game_quality_score': game_type['bet_quality_score'],
             })
 
         return results
+
+    def _classify_game_type(self, row):
+        """
+        Classify game type for smart filtering.
+        Must match train_v19_dual.py classify_game_type() exactly.
+        """
+        elo_diff = abs(row.get('elo_diff', 0))
+        spread = abs(row.get('vegas_spread', 0))
+        week = row.get('week', 10)
+
+        game_type = {
+            'is_pick_em': spread < 3,  # Pick-em games are hard
+            'is_avg_vs_avg': elo_diff < 100,  # No clear favorite
+            'is_large_mismatch': elo_diff > 300,  # Blowout potential
+            'is_early_season': week <= 2,  # Data staleness
+            'is_elite_matchup': row.get('home_pregame_elo', 0) > 1700 and row.get('away_pregame_elo', 0) > 1700,
+        }
+
+        # Calculate a "bet quality" score
+        bet_quality = 0
+        if game_type['is_pick_em']:
+            bet_quality -= 2  # Hard to predict
+        if game_type['is_avg_vs_avg']:
+            bet_quality -= 3  # Main source of losses
+        if game_type['is_early_season']:
+            bet_quality -= 1  # Data staleness
+        if game_type['is_large_mismatch']:
+            bet_quality += 1  # Easier to predict direction
+        if game_type['is_elite_matchup']:
+            bet_quality += 2  # Good data, predictable
+
+        game_type['bet_quality_score'] = bet_quality
+        return game_type
 
     def save(self, path_prefix='cfb_v19'):
         """Save model and config."""

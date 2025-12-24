@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from predictor import generate_predictions, load_v19_model, load_history_data
+from odds_fetcher import fetch_ncaaf_spreads, get_spread_for_game, fetch_odds_api_status
 
 # =============================================================================
 # CONFIGURATION
@@ -25,6 +26,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 CFBD_API_KEY = os.getenv("CFBD_API_KEY", "")
+THE_ODDS_API_KEY = os.getenv("THE_ODDS_API_KEY", "")
 APP_PASSWORD = os.getenv("APP_PASSWORD", "")
 DATA_DIR = Path(os.getenv("DATA_DIR", "/data"))
 CFBD_BASE_URL = "https://api.collegefootballdata.com"
@@ -116,6 +118,22 @@ class GamesResponse(BaseModel):
     week: int
     season_type: str
     games: List[Game]
+
+
+class OddsGame(BaseModel):
+    home_team: str
+    away_team: str
+    spread: float
+    provider: str
+    commence_time: Optional[str] = None
+    fetched_at: Optional[str] = None
+
+
+class OddsResponse(BaseModel):
+    count: int
+    source: str
+    configured: bool
+    games: List[OddsGame]
 
 
 # =============================================================================
@@ -340,6 +358,49 @@ async def get_games(
     )
 
 
+@app.get("/api/odds", response_model=OddsResponse)
+async def get_live_odds():
+    """
+    Get live NCAAF spreads from The Odds API.
+
+    Returns real-time betting lines from major sportsbooks.
+    Falls back gracefully if API key is not configured.
+    """
+    status = fetch_odds_api_status()
+
+    if not status.get('configured'):
+        return OddsResponse(
+            count=0,
+            source="the-odds-api",
+            configured=False,
+            games=[],
+        )
+
+    spreads = fetch_ncaaf_spreads()
+
+    games = []
+    for home_team, data in spreads.items():
+        # Skip duplicate entries (we store by both normalized and original name)
+        if data.get('home_team') != home_team:
+            continue
+
+        games.append(OddsGame(
+            home_team=data.get('home_team', ''),
+            away_team=data.get('away_team', ''),
+            spread=data.get('spread', 0),
+            provider=data.get('provider', 'Unknown'),
+            commence_time=data.get('commence_time'),
+            fetched_at=data.get('fetched_at'),
+        ))
+
+    return OddsResponse(
+        count=len(games),
+        source="the-odds-api",
+        configured=True,
+        games=games,
+    )
+
+
 @app.get("/api/predictions", response_model=PredictionsResponse)
 async def get_predictions(
     season: int = Query(..., description="Season year"),
@@ -348,15 +409,46 @@ async def get_predictions(
     bankroll: int = Query(1000, description="Bankroll for Kelly sizing"),
 ):
     """Get predictions for a specific week."""
-    # Fetch games and lines
+    # Fetch games from CFBD
     games = fetch_games_from_cfbd(season, week, season_type)
-    lines_dict = fetch_lines_from_cfbd(season, week, season_type)
 
     if not games:
         raise HTTPException(status_code=404, detail="No games found for this week")
 
+    # Try to get live odds from The Odds API first
+    live_odds = fetch_ncaaf_spreads()
+    logger.info(f"Fetched {len(live_odds)} live odds from The Odds API")
+
+    # Fetch CFBD lines as fallback
+    cfbd_lines = fetch_lines_from_cfbd(season, week, season_type)
+    logger.info(f"Fetched {len(cfbd_lines)} lines from CFBD")
+
+    # Merge lines: prefer live odds, fall back to CFBD
+    lines_dict = {}
+    for game in games:
+        home = game.get('home_team')
+        away = game.get('away_team')
+
+        # Check for live odds first
+        live_spread = get_spread_for_game(home, away, live_odds)
+        if live_spread is not None:
+            # Get live odds data
+            live_data = live_odds.get(home, {})
+            lines_dict[home] = {
+                'spread_current': live_spread,
+                'spread_opening': live_spread,  # Live odds don't have opening
+                'line_movement': 0,
+                'over_under': None,
+                'provider': live_data.get('provider', 'The Odds API'),
+            }
+            logger.debug(f"Using live odds for {home}: {live_spread}")
+        elif home in cfbd_lines:
+            # Fall back to CFBD
+            lines_dict[home] = cfbd_lines[home]
+            logger.debug(f"Using CFBD for {home}")
+
     if not lines_dict:
-        raise HTTPException(status_code=404, detail="No betting lines available")
+        raise HTTPException(status_code=404, detail="No betting lines available from either source")
 
     # Generate predictions
     try:

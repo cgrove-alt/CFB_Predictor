@@ -64,3 +64,6 @@ frontend/.env.local
 
 # Backend local env
 backend/.env
+
+# CatBoost training info
+catboost_info/

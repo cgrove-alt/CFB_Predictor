@@ -155,6 +155,19 @@ app.add_middleware(
 )
 
 
+# Global exception handler to ensure all errors return JSON
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"}
+    )
+
+
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================

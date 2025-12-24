@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
+# Look for files in current directory first (bundled in Docker), then fallback to DATA_DIR
+APP_DIR = Path(__file__).parent
 DATA_DIR = Path(os.getenv("DATA_DIR", "/data"))
 KELLY_FRACTION = 0.25
 SPREAD_ERROR_THRESHOLD = 4.5
@@ -226,18 +228,26 @@ def load_v19_model():
     """Load V19 dual-target model."""
     global _v19_model
     if _v19_model is None:
-        model_path = DATA_DIR / 'cfb_v19'
+        # Try bundled files first (in app directory), then DATA_DIR
+        app_model_path = APP_DIR / 'cfb_v19_dual.pkl'
+        data_model_path = DATA_DIR / 'cfb_v19_dual.pkl'
+
+        if app_model_path.exists():
+            # Pass full path prefix (without _dual.pkl suffix)
+            model_path = str(APP_DIR / 'cfb_v19')
+            logger.info(f"Loading V19 model from bundled path: {model_path}")
+        elif data_model_path.exists():
+            model_path = str(DATA_DIR / 'cfb_v19')
+            logger.info(f"Loading V19 model from data path: {model_path}")
+        else:
+            raise FileNotFoundError(f"V19 model not found at {app_model_path} or {data_model_path}")
+
         try:
-            _v19_model = V19DualTargetModel.load(str(model_path))
-            logger.info("Loaded V19 dual-target model")
-        except FileNotFoundError:
-            # Try local path
-            try:
-                _v19_model = V19DualTargetModel.load('cfb_v19')
-                logger.info("Loaded V19 model from local path")
-            except Exception as e:
-                logger.error(f"Failed to load V19 model: {e}")
-                raise
+            _v19_model = V19DualTargetModel.load(model_path)
+            logger.info("Loaded V19 dual-target model successfully")
+        except Exception as e:
+            logger.error(f"Failed to load V19 model: {e}")
+            raise
     return _v19_model
 
 
@@ -245,18 +255,25 @@ def load_history_data():
     """Load historical data for feature calculation."""
     global _history_df
     if _history_df is None:
-        csv_path = DATA_DIR / 'cfb_data_safe.csv'
+        # Try bundled files first (in app directory), then DATA_DIR
+        app_csv_path = APP_DIR / 'cfb_data_safe.csv'
+        data_csv_path = DATA_DIR / 'cfb_data_safe.csv'
+
+        if app_csv_path.exists():
+            csv_path = app_csv_path
+            logger.info(f"Loading history from bundled path: {csv_path}")
+        elif data_csv_path.exists():
+            csv_path = data_csv_path
+            logger.info(f"Loading history from data path: {csv_path}")
+        else:
+            raise FileNotFoundError(f"History CSV not found at {app_csv_path} or {data_csv_path}")
+
         try:
             _history_df = pd.read_csv(csv_path)
             logger.info(f"Loaded {len(_history_df)} games from {csv_path}")
-        except FileNotFoundError:
-            # Try local path
-            try:
-                _history_df = pd.read_csv('cfb_data_safe.csv')
-                logger.info("Loaded history from local path")
-            except Exception as e:
-                logger.error(f"Failed to load history data: {e}")
-                raise
+        except Exception as e:
+            logger.error(f"Failed to load history data: {e}")
+            raise
     return _history_df
 
 

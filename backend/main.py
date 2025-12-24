@@ -16,7 +16,10 @@ from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from predictor import generate_predictions, load_v19_model, load_history_data
+from predictor import (
+    generate_predictions, load_v19_model, load_history_data,
+    build_lines_dict, fetch_schedule, fetch_lines
+)
 from odds_fetcher import fetch_ncaaf_spreads, get_spread_for_game, fetch_odds_api_status
 
 # =============================================================================

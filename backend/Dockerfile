@@ -10,6 +10,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Note: prediction_core.py must be copied to backend/ before Docker build
+# This is done in the GitHub workflow or manually with:
+# cp prediction_core.py backend/
+# The predictor.py imports from prediction_core which should be in the same directory
+
 # Create data directory (for Railway volume mount)
 RUN mkdir -p /data
 

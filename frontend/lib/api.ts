@@ -2,6 +2,14 @@ import type { PredictionsResponse, StatusResponse, AuthResponse, GamesResponse }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+// Log the API URL for debugging (visible in browser console)
+if (typeof window !== 'undefined') {
+  console.log('[API] Base URL:', API_BASE);
+  if (API_BASE === 'http://localhost:8000') {
+    console.warn('[API] WARNING: Using localhost - set NEXT_PUBLIC_API_URL in Vercel dashboard!');
+  }
+}
+
 class ApiClient {
   private baseUrl: string;
 
@@ -11,20 +19,33 @@ class ApiClient {
 
   private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-    });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(error.detail || `HTTP ${response.status}`);
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(error.detail || `HTTP ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      // Handle network-level errors (connection refused, DNS failure, etc.)
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        console.error('[API] Network error - cannot reach:', url);
+        if (this.baseUrl === 'http://localhost:8000') {
+          throw new Error('Backend not configured. Please set NEXT_PUBLIC_API_URL in Vercel dashboard.');
+        }
+        throw new Error(`Cannot connect to server. Please try again later.`);
+      }
+      throw error;
     }
-
-    return response.json();
   }
 
   async authenticate(password: string): Promise<AuthResponse> {

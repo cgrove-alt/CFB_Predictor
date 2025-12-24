@@ -1533,6 +1533,14 @@ def generate_v19_predictions(games, lines_dict, model, history_df, season, week,
             elif bet_recommendation == 'LEAN':
                 bet_size = bet_size * 0.5  # Half size for leans
 
+            # V19 FIX: Show probability for the PICKED side, not always home
+            # cover_prob is home team's probability of covering
+            # If picking AWAY, show 1 - cover_prob (away's chance of covering)
+            if pick_side == 'HOME':
+                effective_prob = cover_prob
+            else:
+                effective_prob = 1 - cover_prob
+
             predictions.append({
                 'Home': home,
                 'Away': away,
@@ -1544,8 +1552,8 @@ def generate_v19_predictions(games, lines_dict, model, history_df, season, week,
                 'vegas_spread': vegas_spread,
                 'spread_error': pred_spread_error,
                 'predicted_margin': predicted_margin,
-                'win_prob': cover_prob,  # V19: this is calibrated cover probability
-                'cover_probability': cover_prob,  # Also store explicitly
+                'win_prob': effective_prob,  # V19: probability for PICKED side
+                'cover_probability': effective_prob,  # Probability for picked side
                 'bet_size': bet_size,
                 'line_movement': line_movement,
                 'confidence_tier': confidence_tier,
@@ -2067,14 +2075,16 @@ with st.expander("⚙️ Change Season/Week", expanded=False):
 # BET/LEAN/PASS recommendation guide
 with st.expander("📊 BET / LEAN / PASS Guide", expanded=False):
     st.markdown("""
+**Cover Probability** - Probability that your **picked side** covers the spread
+
 **BET** - Strong edge + high confidence
 - Edge >= 4.5 points vs Vegas
-- Cover probability >= 65% (or <= 35%)
+- Cover probability >= 65%
 - *Recommended: Full stake*
 
 **LEAN** - Moderate edge + decent confidence
 - Edge >= 3.0 points vs Vegas
-- Cover probability >= 60% (or <= 40%)
+- Cover probability >= 60%
 - *Recommended: Half stake*
 
 **PASS** - Insufficient edge or confidence

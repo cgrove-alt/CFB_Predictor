@@ -457,15 +457,43 @@ async def get_predictions(
     bankroll: int = Query(1000, description="Bankroll for Kelly sizing"),
 ):
     """Get predictions for a specific week."""
-    # Fetch games from CFBD
-    games = fetch_games_from_cfbd(season, week, season_type)
-
-    if not games:
-        raise HTTPException(status_code=404, detail="No games found for this week")
-
     # Try to get live odds from The Odds API first
     live_odds = fetch_ncaaf_spreads()
     logger.info(f"Fetched {len(live_odds)} live odds from The Odds API")
+
+    # Fetch games from CFBD
+    cfbd_games = fetch_games_from_cfbd(season, week, season_type)
+
+    # Filter valid CFBD games (with team names)
+    valid_cfbd_games = []
+    for game in cfbd_games:
+        home = game.get('home_team')
+        away = game.get('away_team')
+        if home and away:
+            valid_cfbd_games.append(game)
+        else:
+            logger.warning(f"Skipping CFBD game with missing team: home={home}, away={away}")
+
+    # If CFBD returns no valid games, create games from Odds API
+    if not valid_cfbd_games and live_odds:
+        logger.info("No valid CFBD games found, using Odds API games as source")
+        games = []
+        for home_team, data in live_odds.items():
+            # Skip duplicate entries (we store by both normalized and original name)
+            if data.get('home_team') != home_team:
+                continue
+            games.append({
+                'home_team': data.get('home_team'),
+                'away_team': data.get('away_team'),
+                'start_date': data.get('commence_time'),
+                'completed': False,
+                'id': None,
+            })
+    else:
+        games = valid_cfbd_games
+
+    if not games:
+        raise HTTPException(status_code=404, detail="No games found from CFBD or Odds API")
 
     # Fetch CFBD lines as fallback
     cfbd_lines = fetch_lines_from_cfbd(season, week, season_type)
@@ -478,7 +506,7 @@ async def get_predictions(
         home = game.get('home_team')
         away = game.get('away_team')
 
-        # Skip games with missing team names
+        # Skip games with missing team names (shouldn't happen now but keep as safety)
         if not home or not away:
             logger.warning(f"Skipping game with missing team in predictions: home={home}, away={away}")
             continue

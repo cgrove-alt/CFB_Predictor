@@ -351,8 +351,14 @@ async def get_games(
     season_type: str = Query("regular", description="regular or postseason"),
 ):
     """Get games for a specific week."""
-    games_data = fetch_games_from_cfbd(season, week, season_type)
-    lines = fetch_lines_from_cfbd(season, week, season_type)
+    try:
+        games_data = fetch_games_from_cfbd(season, week, season_type)
+        lines = fetch_lines_from_cfbd(season, week, season_type)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in get_games: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching games: {str(e)}")
 
     games = []
     for g in games_data:

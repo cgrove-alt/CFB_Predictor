@@ -176,14 +176,24 @@ def fetch_games_from_cfbd(season: int, week: int, season_type: str = 'regular') 
         else:
             url = f"{CFBD_BASE_URL}/games?year={season}&week={week}&seasonType={season_type}"
 
-        resp = requests.get(url, headers=get_cfbd_headers(), timeout=10)
+        headers = get_cfbd_headers()
+        logger.info(f"Fetching games from {url}")
+        resp = requests.get(url, headers=headers, timeout=10)
         if resp.status_code == 200:
-            return resp.json()
-        logger.warning(f"CFBD games API returned {resp.status_code}")
-        return []
+            games = resp.json()
+            logger.info(f"Fetched {len(games)} games from CFBD")
+            return games
+        elif resp.status_code == 401:
+            logger.error(f"CFBD API returned 401 Unauthorized - check CFBD_API_KEY")
+            raise HTTPException(status_code=401, detail="CFBD API key is invalid or expired")
+        else:
+            logger.warning(f"CFBD games API returned {resp.status_code}: {resp.text}")
+            return []
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching games: {e}")
-        return []
+        raise HTTPException(status_code=500, detail=f"Error fetching games: {str(e)}")
 
 
 def fetch_lines_from_cfbd(season: int, week: int, season_type: str = 'regular') -> dict:
@@ -273,6 +283,18 @@ def get_refresh_status() -> dict:
 async def health_check():
     """Health check endpoint for Railway."""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+
+@app.get("/api/debug")
+async def debug_info():
+    """Debug endpoint to check configuration (non-sensitive)."""
+    return {
+        "cfbd_api_key_configured": bool(CFBD_API_KEY),
+        "cfbd_api_key_length": len(CFBD_API_KEY) if CFBD_API_KEY else 0,
+        "the_odds_api_key_configured": bool(THE_ODDS_API_KEY),
+        "app_password_configured": bool(APP_PASSWORD),
+        "data_dir": str(DATA_DIR),
+    }
 
 
 @app.post("/api/auth", response_model=AuthResponse)

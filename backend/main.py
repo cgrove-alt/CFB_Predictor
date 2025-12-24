@@ -376,12 +376,19 @@ async def get_games(
     games = []
     for g in games_data:
         home = g.get('home_team')
+        away = g.get('away_team')
+
+        # Skip games with missing team names
+        if not home or not away:
+            logger.warning(f"Skipping game with missing team: home={home}, away={away}")
+            continue
+
         line_info = lines.get(home, {})
 
         games.append(Game(
             id=g.get('id'),
             home_team=home,
-            away_team=g.get('away_team'),
+            away_team=away,
             start_date=g.get('start_date'),
             completed=g.get('completed', False),
             venue=g.get('venue'),

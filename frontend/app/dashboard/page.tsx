@@ -14,6 +14,38 @@ import { ResultsSummary } from '@/components/ResultsSummary'
 
 type FilterType = 'all' | 'bets' | 'leans' | 'actionable'
 
+// Calculate initial season type based on current date
+// This runs synchronously BEFORE render to avoid race conditions
+const getInitialSeasonType = (): string => {
+  const now = new Date()
+  // December 15+ or January 1-10 = bowl season
+  if ((now.getMonth() === 11 && now.getDate() >= 15) ||
+      (now.getMonth() === 0 && now.getDate() <= 10)) {
+    return 'postseason'
+  }
+  return 'regular'
+}
+
+// Calculate initial week based on current date
+const getInitialWeek = (): number => {
+  const now = new Date()
+  const currentYear = now.getFullYear()
+
+  // Bowl season = week 1
+  if ((now.getMonth() === 11 && now.getDate() >= 15) ||
+      (now.getMonth() === 0 && now.getDate() <= 10)) {
+    return 1
+  }
+
+  // Regular season calculation
+  const seasonStart = new Date(currentYear, 7, 24) // Late August
+  if (now >= seasonStart) {
+    const weeksSinceStart = Math.floor((now.getTime() - seasonStart.getTime()) / (7 * 24 * 60 * 60 * 1000))
+    return Math.min(Math.max(weeksSinceStart + 1, 1), 15)
+  }
+  return 1
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
@@ -22,11 +54,11 @@ export default function DashboardPage() {
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>('spreads')
 
-  // Selection state
+  // Selection state - use smart initial values based on current date
   const currentYear = new Date().getFullYear()
   const [season, setSeason] = useState(currentYear)
-  const [week, setWeek] = useState(1)
-  const [seasonType, setSeasonType] = useState('regular')
+  const [week, setWeek] = useState(getInitialWeek)
+  const [seasonType, setSeasonType] = useState(getInitialSeasonType)
   const [bankroll, setBankroll] = useState(1000)
 
   // Data state
@@ -43,24 +75,10 @@ export default function DashboardPage() {
     const isAuth = localStorage.getItem('authenticated')
     if (isAuth !== 'true') {
       router.push('/')
-      return
     }
-
-    // Detect current week (rough estimate based on date)
-    const now = new Date()
-    const seasonStart = new Date(currentYear, 7, 24) // Late August
-    if (now >= seasonStart) {
-      const weeksSinceStart = Math.floor((now.getTime() - seasonStart.getTime()) / (7 * 24 * 60 * 60 * 1000))
-      const currentWeek = Math.min(Math.max(weeksSinceStart + 1, 1), 15)
-      setWeek(currentWeek)
-
-      // Check if we're in bowl season
-      if (now.getMonth() === 11 && now.getDate() >= 15) {
-        setSeasonType('postseason')
-        setWeek(1)
-      }
-    }
-  }, [router, currentYear])
+    // Note: Week and seasonType are now calculated at initialization time
+    // via getInitialWeek() and getInitialSeasonType() to avoid race conditions
+  }, [router])
 
   // Fetch predictions when selection changes
   useEffect(() => {

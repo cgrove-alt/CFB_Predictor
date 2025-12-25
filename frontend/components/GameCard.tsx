@@ -2,13 +2,15 @@
 
 import { Prediction } from '@/lib/types'
 import { PredictionBadge, ConfidenceBadge } from './PredictionBadge'
+import { GameStatusBadge } from './GameStatusBadge'
 
 interface GameCardProps {
   prediction: Prediction
   bankroll: number
+  isHero?: boolean
 }
 
-export function GameCard({ prediction, bankroll }: GameCardProps) {
+export function GameCard({ prediction, bankroll, isHero = false }: GameCardProps) {
   const {
     home_team,
     away_team,
@@ -29,71 +31,59 @@ export function GameCard({ prediction, bankroll }: GameCardProps) {
     start_date,
   } = prediction
 
-  // Format date if available
-  const formatDate = (dateStr: string | null | undefined) => {
-    if (!dateStr) return null
-    try {
-      const date = new Date(dateStr)
-      return date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-      })
-    } catch {
-      return null
-    }
-  }
-
-  const formattedDate = formatDate(start_date)
   const betAmount = Math.round(bet_size * bankroll)
 
-  // Determine card border color based on recommendation
-  const borderClass = {
-    BET: 'border-emerald-500',
-    LEAN: 'border-amber-500',
-    PASS: 'border-slate-600',
-  }[bet_recommendation] || 'border-slate-600'
+  // Border color based on signal (BUY = green, FADE = red)
+  const borderColor = signal === 'BUY' ? 'border-l-emerald-500' : 'border-l-red-500'
 
   return (
-    <div className={`bg-slate-800 rounded-lg border-2 ${borderClass} p-4 hover:bg-slate-750 transition-colors`}>
-      {/* Header: Teams and Badge */}
-      <div className="flex justify-between items-start mb-4">
+    <div className={`bg-slate-800 rounded-lg border-l-4 ${borderColor} p-4 hover:bg-slate-750 transition-colors`}>
+      {/* Header: Teams, Date, and Badge */}
+      <div className="flex justify-between items-start mb-3">
         <div>
-          <h3 className="text-lg font-semibold text-white">
+          <h3 className={`font-semibold text-white ${isHero ? 'text-xl' : 'text-lg'}`}>
             {away_team} @ {home_team}
           </h3>
-          {formattedDate && (
-            <p className="text-sm text-slate-400 mt-1">{formattedDate}</p>
+          {start_date && (
+            <div className="mt-1">
+              <GameStatusBadge startDate={start_date} />
+            </div>
           )}
         </div>
         <PredictionBadge recommendation={bet_recommendation} size="lg" />
       </div>
 
-      {/* Pick Info */}
-      <div className="bg-slate-900/50 rounded-lg p-3 mb-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <span className="text-slate-400 text-sm">Pick: </span>
-            <span className="text-white font-semibold">{team_to_bet}</span>
-            <span className="text-slate-300 ml-2">
-              {spread_to_bet > 0 ? '+' : ''}{spread_to_bet.toFixed(1)}
-            </span>
-          </div>
-          <div className="text-right">
-            <span className="text-slate-400 text-sm">vs </span>
-            <span className="text-slate-300">{opponent}</span>
-          </div>
-        </div>
+      {/* Bet Instruction - Prominent Display */}
+      <div className="bg-slate-900/50 rounded-lg p-3 mb-3">
+        <p className={`font-bold text-white ${isHero ? 'text-2xl' : 'text-xl'}`}>
+          {bet_recommendation}: {team_to_bet}{' '}
+          <span className="text-emerald-400">
+            {spread_to_bet > 0 ? '+' : ''}{spread_to_bet.toFixed(1)}
+          </span>
+        </p>
+        <p className="text-slate-400 text-sm mt-1">
+          vs {opponent}
+        </p>
       </div>
 
+      {/* Bet Amount - Large Green Display */}
+      {bet_recommendation !== 'PASS' && betAmount > 0 && (
+        <div className="mb-3">
+          <p className={`font-bold text-emerald-400 ${isHero ? 'text-4xl' : 'text-3xl'}`}>
+            ${betAmount}
+          </p>
+          <p className="text-sm text-slate-400">
+            {(cover_probability * 100).toFixed(0)}% Est. Win Probability
+          </p>
+        </div>
+      )}
+
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-2 gap-3 mb-3">
         {/* Cover Probability */}
         <div className="bg-slate-900/30 rounded p-2">
           <p className="text-xs text-slate-400 uppercase tracking-wide">Cover Prob</p>
-          <p className={`text-xl font-bold ${
+          <p className={`text-lg font-bold ${
             cover_probability >= 0.55 ? 'text-emerald-400' :
             cover_probability >= 0.50 ? 'text-amber-400' : 'text-red-400'
           }`}>
@@ -104,9 +94,9 @@ export function GameCard({ prediction, bankroll }: GameCardProps) {
         {/* Edge */}
         <div className="bg-slate-900/30 rounded p-2">
           <p className="text-xs text-slate-400 uppercase tracking-wide">Edge</p>
-          <p className={`text-xl font-bold ${
-            predicted_edge >= 4.5 ? 'text-emerald-400' :
-            predicted_edge >= 2.5 ? 'text-amber-400' : 'text-slate-300'
+          <p className={`text-lg font-bold ${
+            Math.abs(predicted_edge) >= 4.5 ? 'text-emerald-400' :
+            Math.abs(predicted_edge) >= 2.5 ? 'text-amber-400' : 'text-slate-300'
           }`}>
             {predicted_edge >= 0 ? '+' : ''}{predicted_edge.toFixed(1)} pts
           </p>
@@ -129,7 +119,7 @@ export function GameCard({ prediction, bankroll }: GameCardProps) {
         </div>
       </div>
 
-      {/* Bottom Row: Confidence, Kelly, Line Movement */}
+      {/* Bottom Row: Confidence, Quality, Line Movement */}
       <div className="flex flex-wrap gap-2 items-center justify-between border-t border-slate-700 pt-3">
         <div className="flex items-center gap-2">
           <ConfidenceBadge tier={confidence_tier} />
@@ -140,21 +130,13 @@ export function GameCard({ prediction, bankroll }: GameCardProps) {
           )}
         </div>
 
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center gap-3 text-sm">
           {/* Line Movement */}
           {line_movement !== 0 && (
             <span className={`${
               line_movement > 0 ? 'text-emerald-400' : 'text-red-400'
             }`}>
               Line: {line_movement > 0 ? '+' : ''}{line_movement.toFixed(1)}
-            </span>
-          )}
-
-          {/* Kelly Bet Size */}
-          {bet_recommendation !== 'PASS' && betAmount > 0 && (
-            <span className="text-slate-300">
-              Kelly: <span className="font-semibold text-white">${betAmount}</span>
-              <span className="text-slate-500 ml-1">({(kelly_fraction * 100).toFixed(1)}%)</span>
             </span>
           )}
         </div>

@@ -135,6 +135,10 @@ class V19DualTargetModel:
         else:
             cover_prob = uncal_prob
 
+        # Clamp probabilities to prevent unrealistic 100% or 0% confidence
+        # The isotonic calibrator can clip to exactly 1.0 for out-of-bounds inputs
+        cover_prob = np.clip(cover_prob, 0.05, 0.95)
+
         results = []
         for i in range(len(X_filled)):
             margin = predicted_margin[i]

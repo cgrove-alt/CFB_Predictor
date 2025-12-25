@@ -111,7 +111,8 @@ export default function DashboardPage() {
   const getFilteredPredictions = (): Prediction[] => {
     if (!predictions?.predictions) return []
 
-    let filtered = [...predictions.predictions]
+    // Start with only upcoming games (not completed)
+    let filtered = predictions.predictions.filter((p) => !p.completed)
 
     // Apply filter
     switch (filter) {

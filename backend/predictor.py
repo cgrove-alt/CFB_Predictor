@@ -178,6 +178,7 @@ def generate_predictions(games, lines_dict, season, week, bankroll=1000):
             'bet_recommendation': row['bet_recommendation'],
             'confidence_tier': row['confidence_tier'],
             'bet_size': row['bet_size'],
+            'kelly_fraction': row.get('kelly_fraction', 0.0),
             'line_movement': row['line_movement'],
             'game_quality_score': row.get('game_quality', 0),
             'start_date': row.get('start_date'),

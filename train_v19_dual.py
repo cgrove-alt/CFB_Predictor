@@ -82,6 +82,10 @@ V19_FEATURES = [
 
     # Expected total (for game flow)
     'expected_total',
+
+    # V20: Weather features (from CFBD Patreon API)
+    'wind_speed', 'temperature', 'is_dome', 'high_wind',
+    'cold_game', 'wind_pass_impact',
 ]
 
 # Game type classification for filtering

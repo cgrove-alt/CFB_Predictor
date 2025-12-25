@@ -355,6 +355,9 @@ def verify_no_leakage(df):
         'elo_efficiency_interaction', 'momentum_strength',
         'dominant_home', 'dominant_away', 'rest_favorite_interaction',
         'has_line_movement',
+        # V20: Weather features
+        'wind_speed', 'temperature', 'is_dome', 'high_wind',
+        'cold_game', 'wind_pass_impact',
     ]
 
     # NOTE: The comp_* features were ORIGINALLY thought to be dangerous (game-specific)
@@ -526,6 +529,89 @@ def dampen_error_amplifying_features(df):
     return df
 
 
+# =============================================================================
+# V20: WEATHER FEATURES
+# =============================================================================
+# Dome stadiums where weather doesn't apply
+DOME_STADIUMS = [
+    'syracuse', 'georgia state', 'tulane', 'unlv',
+    'new mexico', 'louisiana tech', 'northern illinois',
+    # NFL stadiums used for bowl games
+    'ford field', 'lucas oil stadium', 'at&t stadium',
+    'mercedes-benz stadium', 'caesars superdome',
+]
+
+
+def add_weather_features(df):
+    """
+    Add weather-derived features for V20 model.
+
+    Weather data comes from CFBD Patreon API via fetch_advanced.py.
+    Features:
+    - is_dome: Binary flag for indoor stadiums (weather doesn't apply)
+    - high_wind: Wind >= 15 mph (affects passing)
+    - cold_game: Temperature <= 40°F (affects ball handling)
+    - wind_pass_impact: Interaction of wind with passing efficiency
+
+    Research shows:
+    - Wind >15mph: ~58% of games go under total
+    - Cold <30°F: 5-8% scoring reduction
+    - Markets systematically undervalue weather
+    """
+    print("\nV20: Adding weather features...")
+
+    # Ensure wind_speed and temperature exist
+    if 'wind_speed' not in df.columns:
+        print("  WARNING: wind_speed not in data - using 0 (no weather impact)")
+        df['wind_speed'] = 0
+    else:
+        df['wind_speed'] = df['wind_speed'].fillna(0)
+
+    if 'temperature' not in df.columns:
+        print("  WARNING: temperature not in data - using 65°F default")
+        df['temperature'] = 65
+    else:
+        # Fill missing temperatures with comfortable default
+        df['temperature'] = df['temperature'].fillna(65)
+
+    # Is dome - check home team
+    df['is_dome'] = df['home_team'].str.lower().isin(DOME_STADIUMS).astype(int)
+    dome_count = df['is_dome'].sum()
+    print(f"  Dome games: {dome_count}")
+
+    # High wind flag (>= 15 mph) - only applies to outdoor games
+    df['high_wind'] = ((df['wind_speed'] >= 15) & (df['is_dome'] == 0)).astype(int)
+    high_wind_count = df['high_wind'].sum()
+    print(f"  High wind games (>=15 mph, outdoor): {high_wind_count}")
+
+    # Cold game flag (<= 40°F) - only applies to outdoor games
+    df['cold_game'] = ((df['temperature'] <= 40) & (df['is_dome'] == 0)).astype(int)
+    cold_count = df['cold_game'].sum()
+    print(f"  Cold games (<=40°F, outdoor): {cold_count}")
+
+    # Wind x passing efficiency interaction
+    # High wind hurts passing teams more
+    if 'home_comp_pass_ppa' in df.columns:
+        # Use absolute value of passing advantage
+        pass_advantage = (df['home_comp_pass_ppa'].fillna(0) -
+                          df['away_comp_pass_ppa'].fillna(0)).abs()
+        df['wind_pass_impact'] = df['wind_speed'] * pass_advantage / 10
+        # Zero out for dome games
+        df.loc[df['is_dome'] == 1, 'wind_pass_impact'] = 0
+        print(f"  Wind-pass interaction: range {df['wind_pass_impact'].min():.2f} to {df['wind_pass_impact'].max():.2f}")
+    else:
+        df['wind_pass_impact'] = 0
+        print("  Wind-pass interaction: 0 (no PPA data)")
+
+    # Summary stats
+    outdoor_games = (df['is_dome'] == 0).sum()
+    windy_pct = (high_wind_count / outdoor_games * 100) if outdoor_games > 0 else 0
+    cold_pct = (cold_count / outdoor_games * 100) if outdoor_games > 0 else 0
+    print(f"  Outdoor games: {outdoor_games} ({windy_pct:.1f}% windy, {cold_pct:.1f}% cold)")
+
+    return df
+
+
 def main():
     # Load data
     df = load_data()
@@ -548,6 +634,9 @@ def main():
 
     # V19: Remove constant/useless features
     df = remove_constant_features(df)
+
+    # V20: Add weather features
+    df = add_weather_features(df)
 
     # Verify no leakage
     safe_features = verify_no_leakage(df)

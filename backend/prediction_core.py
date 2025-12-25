@@ -38,7 +38,7 @@ SHOW_PASS_RECOMMENDATIONS = True
 # Preferred sportsbooks for odds (in order of preference)
 PREFERRED_BOOKS = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'Bovada']
 
-# V19 Feature set (52 features)
+# V19/V20 Feature set (58 features - includes weather)
 V19_FEATURES = [
     'home_pregame_elo', 'away_pregame_elo', 'elo_diff',
     'home_last5_score_avg', 'away_last5_score_avg',
@@ -64,6 +64,9 @@ V19_FEATURES = [
     'dominant_home', 'dominant_away',
     'rest_favorite_interaction', 'has_line_movement',
     'expected_total',
+    # V20: Weather features (from CFBD Patreon API)
+    'wind_speed', 'temperature', 'is_dome', 'high_wind',
+    'cold_game', 'wind_pass_impact',
 ]
 
 logger = logging.getLogger(__name__)

@@ -5,6 +5,8 @@ This script runs as a Railway cron job to refresh data periodically.
 Configure in Railway with: cron schedule "0 */6 * * *" (every 6 hours)
 On game days (Saturday), can be increased to every 2 hours.
 
+Weekly model retraining runs on Sundays.
+
 Usage:
     python scheduler_worker.py
 """
@@ -192,7 +194,7 @@ def refresh_data():
     return True, f"Completed in {duration:.1f}s"
 
 
-def update_status(success, message):
+def update_status(success, message, retrain_status=None):
     """Write status file for API to read."""
     status = {
         'last_refresh': datetime.now().isoformat(),
@@ -203,6 +205,9 @@ def update_status(success, message):
         'interval_hours': 2 if is_gameday() else 6,
     }
 
+    if retrain_status:
+        status['retrain'] = retrain_status
+
     status_file = DATA_DIR / '.refresh_status.json'
     try:
         with open(status_file, 'w') as f:
@@ -212,6 +217,68 @@ def update_status(success, message):
         logger.error(f"Failed to write status: {e}")
 
 
+def should_retrain():
+    """Check if weekly retraining should run (Sundays only)."""
+    today = datetime.now()
+
+    # Check if forced via environment
+    if os.getenv("FORCE_RETRAIN", "").lower() == "true":
+        logger.info("Force retrain enabled via environment")
+        return True
+
+    # Only retrain on Sundays
+    if today.weekday() != 6:  # 6 = Sunday
+        return False
+
+    # Check if already trained today
+    train_status_file = DATA_DIR / '.train_status.json'
+    if train_status_file.exists():
+        try:
+            with open(train_status_file) as f:
+                train_status = json.load(f)
+            last_train = datetime.fromisoformat(train_status.get('last_train', '2000-01-01'))
+            if last_train.date() == today.date():
+                logger.info("Already trained today, skipping retrain")
+                return False
+        except Exception:
+            pass
+
+    return True
+
+
+def run_retrain():
+    """Run the auto-retrain script."""
+    logger.info("=" * 60)
+    logger.info("WEEKLY MODEL RETRAINING")
+    logger.info("=" * 60)
+
+    try:
+        # Run auto_retrain.py as subprocess
+        result = subprocess.run(
+            [sys.executable, 'auto_retrain.py'],
+            capture_output=True,
+            text=True,
+            timeout=600,  # 10 minute timeout
+            cwd=os.path.dirname(os.path.abspath(__file__))
+        )
+
+        if result.returncode == 0:
+            logger.info("Retraining completed successfully")
+            logger.info(result.stdout[-2000:] if len(result.stdout) > 2000 else result.stdout)
+            return {'success': True, 'message': 'Retraining completed'}
+        else:
+            logger.error(f"Retraining failed with code {result.returncode}")
+            logger.error(result.stderr[-1000:] if len(result.stderr) > 1000 else result.stderr)
+            return {'success': False, 'message': f'Failed: {result.stderr[:200]}'}
+
+    except subprocess.TimeoutExpired:
+        logger.error("Retraining timed out after 10 minutes")
+        return {'success': False, 'message': 'Timeout after 10 minutes'}
+    except Exception as e:
+        logger.error(f"Retraining error: {e}")
+        return {'success': False, 'message': str(e)}
+
+
 def main():
     logger.info("=" * 60)
     logger.info("RAILWAY SCHEDULER WORKER")
@@ -219,16 +286,29 @@ def main():
     logger.info(f"Started: {datetime.now().isoformat()}")
     logger.info(f"DATA_DIR: {DATA_DIR}")
     logger.info(f"Is gameday: {is_gameday()}")
+    logger.info(f"Is retrain day: {should_retrain()}")
 
     if not CFBD_API_KEY:
         logger.error("CFBD_API_KEY not set!")
         update_status(False, "CFBD_API_KEY not configured")
         sys.exit(1)
 
+    retrain_status = None
+
     try:
+        # Step 1: Refresh data
         success, message = refresh_data()
-        update_status(success, message)
+
+        # Step 2: Run weekly retraining (if it's Sunday)
+        if success and should_retrain():
+            retrain_status = run_retrain()
+
+        update_status(success, message, retrain_status)
         logger.info(f"Refresh {'succeeded' if success else 'failed'}: {message}")
+
+        if retrain_status:
+            logger.info(f"Retrain: {'succeeded' if retrain_status['success'] else 'failed'}")
+
         sys.exit(0 if success else 1)
     except Exception as e:
         logger.error(f"Refresh failed: {e}")

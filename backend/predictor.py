@@ -58,41 +58,90 @@ logger = logging.getLogger(__name__)
 # Look for files in current directory first (bundled in Docker), then fallback
 APP_DIR = Path(__file__).parent
 DATA_DIR = Path(os.getenv("DATA_DIR", "/data"))
+MODEL_DIR = DATA_DIR / "models"
 
 
 # =============================================================================
 # MODEL AND DATA LOADING (Cached)
 # =============================================================================
 _v19_model = None
+_v19_model_version = None
 _history_df = None
 
 
-def load_v19_model():
-    """Load V19 dual-target model."""
-    global _v19_model
-    if _v19_model is None:
-        # Try bundled files first (in app directory), then DATA_DIR
-        app_model_path = APP_DIR / 'cfb_v19_dual.pkl'
-        data_model_path = DATA_DIR / 'cfb_v19_dual.pkl'
+def get_latest_model_path():
+    """
+    Find the latest model to load.
 
-        if app_model_path.exists():
-            model_path = str(APP_DIR / 'cfb_v19')
-            logger.info(f"Loading V19 model from bundled path: {model_path}")
-        elif data_model_path.exists():
-            model_path = str(DATA_DIR / 'cfb_v19')
-            logger.info(f"Loading V19 model from data path: {model_path}")
-        else:
-            raise FileNotFoundError(
-                f"V19 model not found at {app_model_path} or {data_model_path}"
-            )
+    Priority:
+    1. Latest retrained model in /data/models/ (check current_model.txt)
+    2. Bundled model in /app/ directory
+    3. Model in /data/ directory
 
+    Returns tuple of (model_path_prefix, version_string)
+    """
+    # Check for retrained model in volume
+    current_model_file = MODEL_DIR / 'current_model.txt'
+    if current_model_file.exists():
         try:
+            version = current_model_file.read_text().strip()
+            model_path = MODEL_DIR / f'{version}.pkl'
+            if model_path.exists():
+                logger.info(f"Found retrained model: {version}")
+                return str(MODEL_DIR / version), version
+        except Exception as e:
+            logger.warning(f"Error reading current_model.txt: {e}")
+
+    # Fall back to bundled model
+    app_model_path = APP_DIR / 'cfb_v19_dual.pkl'
+    if app_model_path.exists():
+        return str(APP_DIR / 'cfb_v19'), 'bundled'
+
+    # Fall back to data directory
+    data_model_path = DATA_DIR / 'cfb_v19_dual.pkl'
+    if data_model_path.exists():
+        return str(DATA_DIR / 'cfb_v19'), 'data'
+
+    raise FileNotFoundError("No V19 model found in any location")
+
+
+def load_v19_model(force_reload=False):
+    """Load V19 dual-target model."""
+    global _v19_model, _v19_model_version
+
+    # Check if we should reload (new retrained model available)
+    model_path, version = get_latest_model_path()
+
+    if _v19_model is None or force_reload or version != _v19_model_version:
+        try:
+            logger.info(f"Loading V19 model from: {model_path} (version: {version})")
             _v19_model = load_v19_dual_model(model_path)
-            logger.info("Loaded V19 dual-target model successfully")
+            _v19_model_version = version
+            logger.info(f"Loaded V19 dual-target model successfully (version: {version})")
         except Exception as e:
             logger.error(f"Failed to load V19 model: {e}")
             raise
+
     return _v19_model
+
+
+def reload_model_if_needed():
+    """
+    Check if a new retrained model is available and reload if so.
+    Called periodically to pick up new weekly models.
+    """
+    global _v19_model_version
+
+    try:
+        _, latest_version = get_latest_model_path()
+        if latest_version != _v19_model_version:
+            logger.info(f"New model available: {latest_version} (current: {_v19_model_version})")
+            load_v19_model(force_reload=True)
+            return True
+    except Exception as e:
+        logger.warning(f"Error checking for new model: {e}")
+
+    return False
 
 
 def load_history_data():

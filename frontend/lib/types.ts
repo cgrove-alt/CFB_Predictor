@@ -71,6 +71,35 @@ export interface GamesResponse {
   games: Game[];
 }
 
+// Results Types
+export interface GameResult {
+  game: string;
+  home_team: string;
+  away_team: string;
+  home_score: number;
+  away_score: number;
+  pick: string;
+  signal: 'BUY' | 'FADE';
+  spread_to_bet: number;
+  result: 'WIN' | 'LOSS';
+  ats_margin: number;
+  confidence_tier: ConfidenceTier;
+  bet_size: number;
+  bet_recommendation: BetRecommendation;
+}
+
+export interface ResultsResponse {
+  season: number;
+  week: number;
+  season_type: string;
+  results: GameResult[];
+  total_games: number;
+  wins: number;
+  losses: number;
+  win_rate: number;
+  status: 'profitable' | 'break_even' | 'review' | 'no_games' | 'no_lines';
+}
+
 // UI Helper Types
 export type ConfidenceTier = Prediction['confidence_tier'];
 export type BetRecommendation = Prediction['bet_recommendation'];

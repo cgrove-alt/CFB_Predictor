@@ -1,4 +1,4 @@
-import type { PredictionsResponse, StatusResponse, AuthResponse, GamesResponse } from './types';
+import type { PredictionsResponse, StatusResponse, AuthResponse, GamesResponse, ResultsResponse } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -85,6 +85,21 @@ class ApiClient {
 
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
     return this.fetch('/api/health');
+  }
+
+  async getResults(
+    season: number,
+    week: number,
+    seasonType: string = 'regular',
+    bankroll: number = 1000
+  ): Promise<ResultsResponse> {
+    const params = new URLSearchParams({
+      season: season.toString(),
+      week: week.toString(),
+      season_type: seasonType,
+      bankroll: bankroll.toString(),
+    });
+    return this.fetch<ResultsResponse>(`/api/results?${params}`);
   }
 }
 

@@ -8,7 +8,9 @@ import { GameCard } from '@/components/GameCard'
 import { TabNavigation, TabType } from '@/components/TabNavigation'
 import { HeroSection } from '@/components/HeroSection'
 import { apiClient } from '@/lib/api'
-import { PredictionsResponse, Prediction } from '@/lib/types'
+import { PredictionsResponse, Prediction, ResultsResponse } from '@/lib/types'
+import { ResultsTable } from '@/components/ResultsTable'
+import { ResultsSummary } from '@/components/ResultsSummary'
 
 type FilterType = 'all' | 'bets' | 'leans' | 'actionable'
 
@@ -29,6 +31,8 @@ export default function DashboardPage() {
 
   // Data state
   const [predictions, setPredictions] = useState<PredictionsResponse | null>(null)
+  const [results, setResults] = useState<ResultsResponse | null>(null)
+  const [resultsLoading, setResultsLoading] = useState(false)
 
   // Filter state
   const [filter, setFilter] = useState<FilterType>('all')
@@ -76,6 +80,27 @@ export default function DashboardPage() {
 
     fetchPredictions()
   }, [season, week, seasonType, bankroll])
+
+  // Fetch results when results tab is active
+  useEffect(() => {
+    if (activeTab !== 'results') return
+
+    const fetchResults = async () => {
+      setResultsLoading(true)
+
+      try {
+        const data = await apiClient.getResults(season, week, seasonType, bankroll)
+        setResults(data)
+      } catch (err) {
+        console.error('Failed to fetch results:', err)
+        setResults(null)
+      } finally {
+        setResultsLoading(false)
+      }
+    }
+
+    fetchResults()
+  }, [activeTab, season, week, seasonType, bankroll])
 
   const handleRefresh = () => {
     // Re-fetch by triggering useEffect
@@ -325,12 +350,57 @@ export default function DashboardPage() {
         )}
 
         {/* RESULTS TAB CONTENT */}
-        {activeTab === 'results' && !isLoading && (
-          <div className="mt-6 text-center py-12">
-            <p className="text-slate-400">Results tracking coming soon...</p>
-            <p className="text-slate-500 text-sm mt-2">
-              This feature requires a backend endpoint to be added.
-            </p>
+        {activeTab === 'results' && (
+          <div className="mt-6">
+            {resultsLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="flex items-center gap-3 text-slate-400">
+                  <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  Loading results...
+                </div>
+              </div>
+            ) : results ? (
+              <>
+                {/* Results Summary */}
+                <ResultsSummary results={results} />
+
+                {/* Results Table */}
+                {results.results.length > 0 ? (
+                  <div className="mt-6 bg-slate-800 rounded-lg overflow-hidden">
+                    <ResultsTable results={results.results} />
+                  </div>
+                ) : (
+                  <div className="mt-6 text-center py-12">
+                    <p className="text-slate-400">
+                      {results.status === 'no_games'
+                        ? 'No completed games yet for this week. Check back after games finish!'
+                        : results.status === 'no_lines'
+                        ? 'No betting lines available for completed games.'
+                        : 'No results to display.'}
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-slate-400">Failed to load results. Please try again.</p>
+              </div>
+            )}
           </div>
         )}
 

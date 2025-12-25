@@ -139,6 +139,34 @@ class OddsResponse(BaseModel):
     games: List[OddsGame]
 
 
+class GameResult(BaseModel):
+    game: str
+    home_team: str
+    away_team: str
+    home_score: int
+    away_score: int
+    pick: str
+    signal: str
+    spread_to_bet: float
+    result: str  # "WIN" or "LOSS"
+    ats_margin: float
+    confidence_tier: str
+    bet_size: float
+    bet_recommendation: str
+
+
+class ResultsResponse(BaseModel):
+    season: int
+    week: int
+    season_type: str
+    results: List[GameResult]
+    total_games: int
+    wins: int
+    losses: int
+    win_rate: float
+    status: str  # "profitable", "break_even", "review"
+
+
 # =============================================================================
 # FASTAPI APP
 # =============================================================================
@@ -589,6 +617,156 @@ async def get_predictions(
         bet_count=bet_count,
         lean_count=lean_count,
         pass_count=pass_count,
+    )
+
+
+@app.get("/api/results", response_model=ResultsResponse)
+async def get_results(
+    season: int = Query(..., description="Season year"),
+    week: int = Query(..., description="Week number"),
+    season_type: str = Query("regular", description="regular or postseason"),
+    bankroll: int = Query(1000, description="Bankroll for bet sizing"),
+):
+    """Get results for completed games with W/L tracking."""
+    # Fetch games from CFBD
+    cfbd_games = fetch_games_from_cfbd(season, week, season_type)
+
+    # Filter to completed games only
+    completed_games = [g for g in cfbd_games if g.get('completed', False)]
+
+    if not completed_games:
+        return ResultsResponse(
+            season=season,
+            week=week,
+            season_type=season_type,
+            results=[],
+            total_games=0,
+            wins=0,
+            losses=0,
+            win_rate=0.0,
+            status="no_games",
+        )
+
+    # Get predictions for these games to compare
+    # We need to re-generate predictions to see what we would have bet
+    try:
+        # Fetch CFBD lines
+        cfbd_lines = fetch_lines_from_cfbd(season, week, season_type)
+
+        # Build lines dict for completed games
+        lines_dict = {}
+        for game in completed_games:
+            home = game.get('homeTeam') or game.get('home_team')
+            if home and home in cfbd_lines:
+                lines_dict[home] = cfbd_lines[home]
+
+        # Normalize game team names
+        valid_games = []
+        for game in completed_games:
+            home = game.get('homeTeam') or game.get('home_team')
+            away = game.get('awayTeam') or game.get('away_team')
+            if home and away:
+                game['home_team'] = home
+                game['away_team'] = away
+                valid_games.append(game)
+
+        if not valid_games or not lines_dict:
+            return ResultsResponse(
+                season=season,
+                week=week,
+                season_type=season_type,
+                results=[],
+                total_games=0,
+                wins=0,
+                losses=0,
+                win_rate=0.0,
+                status="no_lines",
+            )
+
+        # Generate predictions
+        predictions_data = generate_predictions(
+            games=valid_games,
+            lines_dict=lines_dict,
+            season=season,
+            week=week,
+            bankroll=bankroll,
+        )
+    except Exception as e:
+        logger.error(f"Error generating predictions for results: {e}")
+        predictions_data = []
+
+    # Build results by matching predictions to completed games
+    results = []
+    for game in valid_games:
+        home = game.get('home_team')
+        away = game.get('away_team')
+        home_score = game.get('homePoints') or game.get('home_points') or 0
+        away_score = game.get('awayPoints') or game.get('away_points') or 0
+
+        # Find the prediction for this game
+        pred = None
+        for p in predictions_data:
+            if p.get('home_team') == home or p.get('away_team') == away:
+                pred = p
+                break
+
+        if not pred:
+            continue
+
+        # Calculate ATS result
+        actual_margin = home_score - away_score  # Positive = home won by X
+        vegas_spread = pred.get('vegas_spread', 0)
+        signal = pred.get('signal', '')
+
+        # Determine if our pick was correct
+        if signal == 'BUY':
+            # We bet on home team to cover
+            ats_result = actual_margin + vegas_spread  # If positive, home covered
+            pick_won = ats_result > 0
+        else:
+            # We bet on away team to cover (FADE home)
+            ats_result = -actual_margin - vegas_spread  # If positive, away covered
+            pick_won = ats_result > 0
+
+        results.append(GameResult(
+            game=f"{away} @ {home}",
+            home_team=home,
+            away_team=away,
+            home_score=home_score,
+            away_score=away_score,
+            pick=f"{pred.get('team_to_bet', '')} {pred.get('spread_to_bet', 0):+.1f}",
+            signal=signal,
+            spread_to_bet=pred.get('spread_to_bet', 0),
+            result="WIN" if pick_won else "LOSS",
+            ats_margin=round(ats_result, 1),
+            confidence_tier=pred.get('confidence_tier', 'N/A'),
+            bet_size=round(pred.get('bet_size', 0) * bankroll),
+            bet_recommendation=pred.get('bet_recommendation', 'PASS'),
+        ))
+
+    # Calculate summary stats
+    wins = sum(1 for r in results if r.result == "WIN")
+    losses = len(results) - wins
+    win_rate = (wins / len(results) * 100) if results else 0.0
+
+    # Determine status
+    if win_rate >= 55:
+        status = "profitable"
+    elif win_rate >= 50:
+        status = "break_even"
+    else:
+        status = "review"
+
+    return ResultsResponse(
+        season=season,
+        week=week,
+        season_type=season_type,
+        results=results,
+        total_games=len(results),
+        wins=wins,
+        losses=losses,
+        win_rate=round(win_rate, 1),
+        status=status,
     )
 
 

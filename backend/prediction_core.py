@@ -73,24 +73,23 @@ V19_FEATURES = [
     'home_qb_status', 'away_qb_status', 'qb_advantage', 'qb_uncertainty',
 ]
 
-# V22 FCS/small-school teams to flag (high error rates)
-FCS_TEAMS = {
-    'Samford', 'Davidson', 'Idaho State', 'Northern Arizona', 'Cal Poly',
-    'Sacramento State', 'Montana', 'Montana State', 'Eastern Washington',
-    'Weber State', 'UC Davis', 'Portland State', 'Southern Utah',
-    'Abilene Christian', 'Incarnate Word', 'Stephen F. Austin', 'Sam Houston',
-    'Tarleton State', 'Lamar', 'McNeese', 'Nicholls', 'Northwestern State',
-    'SE Louisiana', 'Houston Christian', 'Texas A&M-Commerce',
-    'Alabama A&M', 'Alabama State', 'Alcorn State', 'Arkansas-Pine Bluff',
-    'Bethune-Cookman', 'Delaware State', 'FAMU', 'Grambling', 'Howard',
-    'Jackson State', 'Mississippi Valley State', 'Morgan State', 'Norfolk State',
-    'North Carolina A&T', 'North Carolina Central', 'Prairie View A&M',
-    'SC State', 'Southern', 'Texas Southern', 'Kennesaw State', 'North Alabama',
-    'Jacksonville State', 'Central Arkansas', 'Austin Peay', 'Eastern Kentucky',
-    'Lindenwood', 'Southern Indiana', 'Western Illinois', 'Tennessee State',
-    'Tennessee Tech', 'UT Martin', 'Southeast Missouri', 'Murray State',
-    'Morehead State', 'Idaho', 'Eastern Illinois'
-}
+# Import FBS teams allowlist for V22 FBS-only model
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from fbs_teams import (
+    get_fbs_teams, is_fbs_game as check_fbs_game, is_fbs_team,
+    normalize_team_name, get_team_conference, get_conference_matchup,
+    get_conference_tier, TEAM_TO_CONFERENCE
+)
+
+# FBS teams allowlist - THE GOLDEN RULE for V22
+# Only predict on games where BOTH teams are FBS
+FBS_TEAMS = get_fbs_teams()
+
+# Legacy FCS_TEAMS kept for backwards compatibility (deprecated - use FBS_TEAMS instead)
+# This blacklist approach is replaced by the FBS allowlist (whitelist) approach
+FCS_TEAMS = set()  # Empty - use FBS allowlist instead
 
 # Dome stadiums (weather doesn't affect these games)
 DOME_STADIUMS = [
@@ -962,8 +961,26 @@ CLUSTER_BLOWOUT = 2       # Blowout risk (margin > 24)
 
 
 def is_fcs_game(home: str, away: str) -> bool:
-    """Check if game involves an FCS team (auto-pass for V22)."""
-    return home in FCS_TEAMS or away in FCS_TEAMS
+    """
+    Check if game involves a non-FBS team (auto-skip for V22).
+
+    V22 uses FBS ALLOWLIST approach: game is skipped if EITHER team is NOT in FBS allowlist.
+    This replaces the old FCS blacklist approach for cleaner, more reliable data.
+
+    Returns:
+        True if game should be skipped (at least one team is non-FBS)
+        False if game is valid FBS vs FBS
+    """
+    # Normalize team names
+    home_normalized = normalize_team_name(home)
+    away_normalized = normalize_team_name(away)
+
+    # Check if BOTH teams are in FBS allowlist
+    home_is_fbs = home_normalized in FBS_TEAMS
+    away_is_fbs = away_normalized in FBS_TEAMS
+
+    # Return True (skip) if either team is NOT FBS
+    return not (home_is_fbs and away_is_fbs)
 
 
 class V22MetaRouterModel:
@@ -987,7 +1004,7 @@ class V22MetaRouterModel:
         self.router_feature_names = None
         self.scaler = None
         self.metrics = {}
-        self.fcs_teams = set()  # Loaded from model file
+        self.fbs_teams = FBS_TEAMS  # FBS allowlist (replaces fcs_teams blacklist)
 
     def predict(self, X, X_router=None, vegas_spread=None) -> List[Dict[str, Any]]:
         """
@@ -1110,7 +1127,12 @@ class V22MetaRouterModel:
             model.router_feature_names = data['router_feature_names']
             model.scaler = data['scaler']
             model.metrics = data.get('metrics', {})
-            model.fcs_teams = set(data.get('fcs_teams', []))
+            # V22 FBS-Only: Load FBS teams allowlist (replaces fcs_teams blacklist)
+            model.fbs_teams = set(data.get('fbs_teams', []))
+            # Legacy compatibility - if old model has fcs_teams, ignore it
+            if not model.fbs_teams and 'fcs_teams' in data:
+                logger.warning("Loaded legacy V22 model with FCS blacklist - using global FBS allowlist instead")
+                model.fbs_teams = FBS_TEAMS
 
         return model
 
@@ -1209,14 +1231,23 @@ def generate_v22_predictions(
             line_movement = lines_dict[home]['line_movement']
             spread_open = lines_dict[home].get('spread_opening', vegas_spread)
 
-            # V22: AUTO-PASS for FCS games
+            # V22 FBS-ONLY: Skip games where either team is not FBS
             if is_fcs_game(home, away):
-                logger.info(f"V22 AUTO-PASS: FCS game detected - {away} @ {home}")
+                # Determine which team(s) are non-FBS for logging
+                home_is_fbs = is_fbs_team(normalize_team_name(home))
+                away_is_fbs = is_fbs_team(normalize_team_name(away))
+                non_fbs_teams = []
+                if not home_is_fbs:
+                    non_fbs_teams.append(home)
+                if not away_is_fbs:
+                    non_fbs_teams.append(away)
+
+                logger.info(f"V22 SKIPPED: Non-FBS game - {away} @ {home} (Non-FBS: {', '.join(non_fbs_teams)})")
                 predictions.append({
                     'Home': home,
                     'Away': away,
                     'Game': f"{away} @ {home}",
-                    'Signal': 'PASS',
+                    'Signal': 'SKIP',
                     'team_to_bet': None,
                     'opponent': None,
                     'spread_to_bet': vegas_spread,
@@ -1227,19 +1258,20 @@ def generate_v22_predictions(
                     'cover_probability': 0.5,
                     'bet_size': 0,
                     'line_movement': line_movement,
-                    'confidence_tier': 'VERY LOW',
-                    'confidence_class': 'confidence-very-low',
-                    'confidence_emoji': '🚫',
-                    'bet_recommendation': 'PASS',
-                    'game_quality': -10,  # Maximum penalty for FCS
-                    'game_type': 'FCS (Auto-Pass)',
+                    'confidence_tier': 'N/A',
+                    'confidence_class': 'confidence-skip',
+                    'confidence_emoji': '⏭️',
+                    'bet_recommendation': 'SKIP',
+                    'game_quality': -99,  # Skipped - not evaluated
+                    'game_type': 'Skipped: Non-FBS Game',
                     'router_confidence': 0,
-                    'uncertainty': 25.0,  # Maximum uncertainty
+                    'uncertainty': 0,  # N/A - not evaluated
                     'blowout_prob': 0,
                     'start_date': game.get('start_date') or game.get('startDate'),
                     'completed': game.get('completed', False),
                     'game_id': game.get('id'),
-                    'is_fcs_game': True,
+                    'is_fbs_game': False,
+                    'skip_reason': f"Non-FBS: {', '.join(non_fbs_teams)}",
                 })
                 continue
 
@@ -1318,6 +1350,9 @@ def generate_v22_predictions(
                 effective_prob = 1 - cover_prob
                 effective_edge = -pred_spread_error
 
+            # Add conference matchup info for FBS games
+            conf_matchup = get_conference_matchup(home, away)
+
             predictions.append({
                 'Home': home,
                 'Away': away,
@@ -1345,7 +1380,8 @@ def generate_v22_predictions(
                 'start_date': game.get('start_date') or game.get('startDate'),
                 'completed': game.get('completed', False),
                 'game_id': game.get('id'),
-                'is_fcs_game': False,
+                'is_fbs_game': True,  # Only FBS vs FBS games reach this point
+                'conference_matchup': conf_matchup,  # e.g., "SEC vs SEC", "P4 vs G5"
             })
         except Exception as e:
             logger.error(f"V22 error predicting {game.get('awayTeam', '?')} @ {game.get('homeTeam', '?')}: {e}")

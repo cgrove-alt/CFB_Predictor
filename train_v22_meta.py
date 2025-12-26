@@ -1,12 +1,15 @@
 """
-V22 Meta-Router Model Training Pipeline
-========================================
+V22 Meta-Router Model Training Pipeline (FBS-Only)
+===================================================
 
 Addresses V21 weaknesses identified in error analysis:
 1. "Average vs Average" games (MAE 11.35, worst category)
-2. Small-school/FCS outliers (Samford MAE 24.0)
-3. away_scoring_trend error amplification (1.73x)
+2. Small-school/FCS outliers - NOW ELIMINATED via FBS allowlist
+3. scoring_trend features - RE-ENABLED for clean FBS-only data
 4. Blowout game unpredictability
+
+**THE GOLDEN RULE**: Only train on FBS vs FBS matchups.
+If a team is NOT in the FBS allowlist, the game is excluded.
 
 Architecture:
 - Meta-Router (Gating Network): Classifies game cluster and routes to specialized sub-models
@@ -14,6 +17,7 @@ Architecture:
   - Cluster 1: High Variance/Mismatch (use Graph Model + Uncertainty Penalty)
   - Cluster 2: Blowout Risk (Margin > 24, apply 1.15x multiplier)
 - Sub-Model Ensemble: XGBoost, Graph-aware model, Blowout Classifier
+- Conference matchup feature for P4 vs G5 differentiation
 - Final prediction weighted by meta-router confidence
 """
 
@@ -53,46 +57,26 @@ except ImportError:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Import FBS teams allowlist
+from fbs_teams import (
+    get_fbs_teams, is_fbs_game, is_fbs_team, normalize_team_name,
+    get_team_conference, get_conference_matchup, get_conference_tier,
+    TEAM_TO_CONFERENCE
+)
+
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-# FCS and small-school teams to FILTER OUT (high error rates from error_patterns_report.txt)
-FCS_TEAMS = {
-    'Samford', 'Davidson', 'Idaho State', 'Northern Arizona', 'Cal Poly',
-    'Sacramento State', 'Montana', 'Montana State', 'Eastern Washington',
-    'Weber State', 'UC Davis', 'Portland State', 'Southern Utah',
-    'Abilene Christian', 'Incarnate Word', 'Stephen F. Austin', 'Sam Houston',
-    'Tarleton State', 'Lamar', 'McNeese', 'Nicholls', 'Northwestern State',
-    'SE Louisiana', 'Houston Christian', 'Texas A&M-Commerce',
-    'Alabama A&M', 'Alabama State', 'Alcorn State', 'Arkansas-Pine Bluff',
-    'Bethune-Cookman', 'Delaware State', 'FAMU', 'Grambling', 'Howard',
-    'Jackson State', 'Mississippi Valley State', 'Morgan State', 'Norfolk State',
-    'North Carolina A&T', 'North Carolina Central', 'Prairie View A&M',
-    'SC State', 'Southern', 'Texas Southern', 'Kennesaw State', 'North Alabama',
-    'Jacksonville State', 'Central Arkansas', 'Austin Peay', 'Eastern Kentucky',
-    'Lindenwood', 'Southern Indiana', 'Western Illinois', 'Tennessee State',
-    'Tennessee Tech', 'UT Martin', 'Southeast Missouri', 'Murray State',
-    'Morehead State', 'Bucknell', 'Colgate', 'Fordham', 'Georgetown',
-    'Holy Cross', 'Lafayette', 'Lehigh', 'Merrimack', 'Sacred Heart',
-    'Stonehill', 'Villanova', 'Charleston Southern', 'Campbell', 'Gardner-Webb',
-    'Robert Morris', 'Bryant', 'Duquesne', 'LIU',
-    'Stony Brook', 'Maine', 'New Hampshire', 'Rhode Island', 'Albany',
-    'Delaware', 'Elon', 'Hampton', 'Monmouth', 'Richmond', 'Towson',
-    'William & Mary', 'Dartmouth', 'Harvard', 'Yale', 'Princeton',
-    'Penn', 'Brown', 'Columbia', 'Cornell', 'Drake', 'Dayton', 'Marist',
-    'Presbyterian', 'San Diego', 'Stetson', 'Valparaiso',
-    'Butler', 'St. Thomas', 'Illinois State', 'Indiana State', 'Missouri State',
-    'North Dakota', 'North Dakota State', 'Northern Iowa', 'South Dakota',
-    'South Dakota State', 'Southern Illinois', 'Youngstown State',
-    'Chattanooga', 'East Tennessee State', 'Furman', 'Mercer',
-    'VMI', 'Western Carolina', 'Wofford', 'The Citadel', 'Idaho', 'Eastern Illinois'
-}
+# FBS Allowlist - THE GOLDEN RULE
+# Only games where BOTH teams are in this list are used for training/prediction
+# This replaces the old FCS blacklist approach for cleaner, more reliable data
+FBS_TEAMS = get_fbs_teams()
 
-# Toxic features to DROP immediately (from error_insights.txt)
-TOXIC_FEATURES = [
-    'away_scoring_trend',  # 1.73x error amplification
-]
+# Toxic features - REMOVED: scoring_trend features are now RE-ENABLED for FBS-only data
+# The 1.73x error amplification was caused by FCS games introducing noise
+# With FBS-only filtering, these features provide valuable momentum signal
+TOXIC_FEATURES = []  # Empty - scoring trends are safe for FBS-only data
 
 # Game Cluster definitions for Meta-Router
 CLUSTER_STANDARD = 0      # Standard game - use base XGBoost
@@ -115,11 +99,11 @@ V22_BASE_FEATURES = [
     'vegas_spread', 'line_movement', 'spread_open',
     'large_favorite', 'large_underdog', 'close_game',
     'elo_vs_spread', 'rest_spread_interaction',
-    # Momentum (WITHOUT toxic away_scoring_trend)
+    # Momentum - RE-ENABLED: scoring_trend now safe for FBS-only data
     'home_streak', 'away_streak', 'streak_diff',
     'home_ats', 'away_ats', 'ats_diff',
     'home_elo_momentum', 'away_elo_momentum', 'elo_momentum_diff',
-    'home_scoring_trend',  # KEEP home, REMOVED away (toxic)
+    'home_scoring_trend', 'away_scoring_trend',  # Both re-enabled for FBS-only
     # PPA efficiency
     'home_comp_off_ppa', 'away_comp_off_ppa',
     'home_comp_def_ppa', 'away_comp_def_ppa',
@@ -156,12 +140,24 @@ V22_VOLATILITY_FEATURES = [
     'volatility_diff',            # Volatility differential
 ]
 
+# V22 Conference Matchup Features (new for FBS-only model)
+V22_CONFERENCE_FEATURES = [
+    'home_is_p4',                 # Home team is Power 4 conference
+    'away_is_p4',                 # Away team is Power 4 conference
+    'is_conference_game',         # Same conference matchup
+    'is_p4_vs_p4',                # Power 4 vs Power 4
+    'is_p4_vs_g5',                # Power 4 vs Group of 5
+    'is_g5_vs_g5',                # Group of 5 vs Group of 5
+]
+
 # Meta-Router Input Features (game context for routing)
 META_ROUTER_FEATURES = [
     'week',                       # Week of season
     'elo_diff',                   # Elo differential (absolute value)
     'matchup_volatility',         # Average volatility of both teams
     'vegas_spread',               # Spread as indicator of expected game type
+    'is_p4_vs_p4',                # Power 4 matchups (higher predictability)
+    'is_p4_vs_g5',                # Talent gap indicator
 ]
 
 
@@ -171,9 +167,10 @@ META_ROUTER_FEATURES = [
 
 def load_and_clean_data(csv_path: str = 'cfb_data_safe.csv') -> pd.DataFrame:
     """
-    Load data and apply V22 cleaning steps:
-    1. Filter out FCS teams completely
-    2. Drop toxic features immediately
+    Load data and apply V22 cleaning steps.
+
+    **THE GOLDEN RULE**: Only keep games where BOTH teams are FBS.
+    Uses allowlist approach (whitelist) instead of blacklist for cleaner data.
     """
     logger.info(f"Loading data from {csv_path}")
     df = pd.read_csv(csv_path)
@@ -181,27 +178,100 @@ def load_and_clean_data(csv_path: str = 'cfb_data_safe.csv') -> pd.DataFrame:
     original_count = len(df)
     logger.info(f"Loaded {original_count} games")
 
-    # 1. FILTER OUT FCS teams completely (not just flag them)
-    fcs_home = df['home_team'].isin(FCS_TEAMS)
-    fcs_away = df['away_team'].isin(FCS_TEAMS)
-    fcs_games = fcs_home | fcs_away
+    # Normalize team names first
+    df['home_team_normalized'] = df['home_team'].apply(normalize_team_name)
+    df['away_team_normalized'] = df['away_team'].apply(normalize_team_name)
 
-    fcs_count = fcs_games.sum()
-    df = df[~fcs_games].reset_index(drop=True)
-    logger.info(f"REMOVED {fcs_count} games involving FCS teams ({100*fcs_count/original_count:.1f}%)")
-    logger.info(f"Remaining: {len(df)} FBS-only games")
+    # 1. STRICT FBS FILTERING (THE GOLDEN RULE)
+    # Only keep games where BOTH teams are in the FBS allowlist
+    fbs_home = df['home_team_normalized'].isin(FBS_TEAMS)
+    fbs_away = df['away_team_normalized'].isin(FBS_TEAMS)
+    fbs_both = fbs_home & fbs_away
 
-    # 2. DROP toxic features immediately
+    non_fbs_count = (~fbs_both).sum()
+    df = df[fbs_both].reset_index(drop=True)
+
+    logger.info(f"REMOVED {non_fbs_count} non-FBS games ({100*non_fbs_count/original_count:.1f}%)")
+    logger.info(f"Remaining: {len(df)} FBS vs FBS games only")
+
+    # Log which teams were filtered out
+    if non_fbs_count > 0:
+        all_teams_original = set(pd.read_csv(csv_path)['home_team'].unique()) | set(pd.read_csv(csv_path)['away_team'].unique())
+        non_fbs_teams = all_teams_original - FBS_TEAMS
+        if len(non_fbs_teams) <= 20:
+            logger.info(f"Filtered teams (non-FBS): {sorted(non_fbs_teams)}")
+        else:
+            logger.info(f"Filtered {len(non_fbs_teams)} non-FBS teams from dataset")
+
+    # 2. DROP toxic features (if any - currently empty for FBS-only)
     for feat in TOXIC_FEATURES:
         if feat in df.columns:
             df = df.drop(columns=[feat])
             logger.info(f"DROPPED toxic feature: {feat}")
 
-    # 3. Engineer style and volatility features if not present
+    # 3. Engineer V22 features (style, volatility, conference matchup)
     df = engineer_v22_features(df)
 
-    # 4. Create game cluster labels for meta-router training
+    # 4. Add conference matchup features
+    df = add_conference_matchup_features(df)
+
+    # 5. Create game cluster labels for meta-router training
     df = create_game_clusters(df)
+
+    # Clean up temporary columns
+    df = df.drop(columns=['home_team_normalized', 'away_team_normalized'], errors='ignore')
+
+    return df
+
+
+def add_conference_matchup_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add conference-based features for FBS-only model.
+
+    Features:
+    - home_is_p4, away_is_p4: Power 4 conference flags
+    - is_conference_game: Same conference matchup
+    - is_p4_vs_p4, is_p4_vs_g5, is_g5_vs_g5: Matchup tier indicators
+    - conference_matchup: String like "SEC vs SEC", "P4 vs G5"
+    """
+    logger.info("Adding conference matchup features...")
+
+    # Get conferences for each team
+    home_teams = df['home_team'].apply(normalize_team_name)
+    away_teams = df['away_team'].apply(normalize_team_name)
+
+    home_conf = home_teams.apply(get_team_conference)
+    away_conf = away_teams.apply(get_team_conference)
+
+    home_tier = home_conf.apply(lambda c: get_conference_tier(c) if c else 'Unknown')
+    away_tier = away_conf.apply(lambda c: get_conference_tier(c) if c else 'Unknown')
+
+    # Power 4 flags
+    df['home_is_p4'] = (home_tier == 'P4').astype(int)
+    df['away_is_p4'] = (away_tier == 'P4').astype(int)
+
+    # Same conference
+    df['is_conference_game'] = (home_conf == away_conf).astype(int)
+
+    # Matchup tier indicators
+    df['is_p4_vs_p4'] = ((home_tier == 'P4') & (away_tier == 'P4')).astype(int)
+    df['is_p4_vs_g5'] = (
+        ((home_tier == 'P4') & (away_tier == 'G5')) |
+        ((home_tier == 'G5') & (away_tier == 'P4'))
+    ).astype(int)
+    df['is_g5_vs_g5'] = ((home_tier == 'G5') & (away_tier == 'G5')).astype(int)
+
+    # String conference matchup (for debugging/logging)
+    df['conference_matchup'] = df.apply(
+        lambda row: get_conference_matchup(row['home_team'], row['away_team']),
+        axis=1
+    )
+
+    # Log distribution
+    matchup_counts = df['conference_matchup'].value_counts()
+    logger.info(f"Conference matchup distribution (top 10):")
+    for matchup, count in matchup_counts.head(10).items():
+        logger.info(f"  {matchup}: {count} ({100*count/len(df):.1f}%)")
 
     return df
 
@@ -640,9 +710,12 @@ class V22MetaRouterModel:
         available_base = [f for f in V22_BASE_FEATURES if f in df.columns]
         available_style = [f for f in V22_STYLE_FEATURES if f in df.columns]
         available_vol = [f for f in V22_VOLATILITY_FEATURES if f in df.columns]
+        available_conf = [f for f in V22_CONFERENCE_FEATURES if f in df.columns]
 
-        self.feature_names = available_base + available_style + available_vol
+        self.feature_names = available_base + available_style + available_vol + available_conf
         logger.info(f"Using {len(self.feature_names)} features for sub-models")
+        logger.info(f"  Base: {len(available_base)}, Style: {len(available_style)}, "
+                   f"Volatility: {len(available_vol)}, Conference: {len(available_conf)}")
 
         X_base = df[self.feature_names].fillna(0).values
 
@@ -672,6 +745,7 @@ class V22MetaRouterModel:
         else:
             df = df.copy()
             df = engineer_v22_features(df)
+            df = add_conference_matchup_features(df)
             df = create_game_clusters(df)
 
         # Check for target columns
@@ -849,9 +923,9 @@ class V22MetaRouterModel:
             'router_feature_names': self.router_feature_names,
             'scaler': self.scaler,
             'metrics': self.metrics,
-            'version': 'V22',
+            'version': 'V22-FBS-Only',
             'trained_at': datetime.now().isoformat(),
-            'fcs_teams': list(FCS_TEAMS),  # Save for inference filtering
+            'fbs_teams': list(FBS_TEAMS),  # Save FBS allowlist for inference filtering
         }
 
         output_path = f"{path_prefix}_v22_meta.pkl"

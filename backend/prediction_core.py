@@ -40,6 +40,7 @@ PREFERRED_BOOKS = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'Bovada']
 
 # V19/V20 Feature set (58 features - includes weather)
 # V21 adds 4 QB availability features = 62 total
+# V22 uses Meta-Router architecture with specialized sub-models
 V19_FEATURES = [
     'home_pregame_elo', 'away_pregame_elo', 'elo_diff',
     'home_last5_score_avg', 'away_last5_score_avg',
@@ -71,6 +72,25 @@ V19_FEATURES = [
     # V21: QB availability features
     'home_qb_status', 'away_qb_status', 'qb_advantage', 'qb_uncertainty',
 ]
+
+# V22 FCS/small-school teams to flag (high error rates)
+FCS_TEAMS = {
+    'Samford', 'Davidson', 'Idaho State', 'Northern Arizona', 'Cal Poly',
+    'Sacramento State', 'Montana', 'Montana State', 'Eastern Washington',
+    'Weber State', 'UC Davis', 'Portland State', 'Southern Utah',
+    'Abilene Christian', 'Incarnate Word', 'Stephen F. Austin', 'Sam Houston',
+    'Tarleton State', 'Lamar', 'McNeese', 'Nicholls', 'Northwestern State',
+    'SE Louisiana', 'Houston Christian', 'Texas A&M-Commerce',
+    'Alabama A&M', 'Alabama State', 'Alcorn State', 'Arkansas-Pine Bluff',
+    'Bethune-Cookman', 'Delaware State', 'FAMU', 'Grambling', 'Howard',
+    'Jackson State', 'Mississippi Valley State', 'Morgan State', 'Norfolk State',
+    'North Carolina A&T', 'North Carolina Central', 'Prairie View A&M',
+    'SC State', 'Southern', 'Texas Southern', 'Kennesaw State', 'North Alabama',
+    'Jacksonville State', 'Central Arkansas', 'Austin Peay', 'Eastern Kentucky',
+    'Lindenwood', 'Southern Indiana', 'Western Illinois', 'Tennessee State',
+    'Tennessee Tech', 'UT Martin', 'Southeast Missouri', 'Murray State',
+    'Morehead State', 'Idaho', 'Eastern Illinois'
+}
 
 # Dome stadiums (weather doesn't affect these games)
 DOME_STADIUMS = [
@@ -927,5 +947,352 @@ def generate_v19_predictions(
             })
         except Exception as e:
             logger.error(f"V19 error predicting {game.get('awayTeam', '?')} @ {game.get('homeTeam', '?')}: {e}")
+
+    return pd.DataFrame(predictions)
+
+
+# =============================================================================
+# V22 META-ROUTER MODEL SUPPORT
+# =============================================================================
+
+class V22MetaRouterModel:
+    """
+    V22 Meta-Router Ensemble Model for prediction_core.
+
+    This is a lightweight wrapper that loads the trained V22 model
+    and provides prediction functionality.
+    """
+
+    def __init__(self):
+        self.meta_router = None
+        self.elite_model = None
+        self.avgvsavg_model = None
+        self.mismatch_model = None
+        self.standard_model = None
+        self.feature_names = None
+        self.router_feature_names = None
+        self.scaler = None
+        self.metrics = {}
+
+    def predict(self, X, X_router=None, vegas_spread=None) -> List[Dict[str, Any]]:
+        """
+        Make predictions using V22 meta-router ensemble.
+
+        Returns list of dicts with prediction results.
+        """
+        import numpy as np
+
+        if X_router is None:
+            X_router = X
+
+        # Scale features
+        X_scaled = self.scaler.transform(X)
+
+        # Get routing weights (soft assignment)
+        routing_weights = self.meta_router.get_routing_weights(X_router)
+        game_types, confidences = self.meta_router.predict(X_router)
+
+        # Get predictions from all sub-models
+        margin_elite, cover_elite = self.elite_model.predict(X_scaled)
+        margin_avg, cover_avg, uncertainty_avg = self.avgvsavg_model.predict(X_scaled)
+        margin_mismatch, cover_mismatch, blowout_prob = self.mismatch_model.predict(X_scaled)
+        margin_standard, cover_standard = self.standard_model.predict(X_scaled)
+
+        # Combine using routing weights
+        margins = np.stack([margin_elite, margin_avg, margin_mismatch, margin_standard], axis=1)
+        covers = np.stack([cover_elite, cover_avg, cover_mismatch, cover_standard], axis=1)
+
+        margin_pred = np.sum(margins * routing_weights, axis=1)
+        cover_prob = np.sum(covers * routing_weights, axis=1)
+
+        # Uncertainty from AvgVsAvg model (NGBoost)
+        uncertainty = uncertainty_avg if uncertainty_avg is not None else np.full(len(X), 7.0)
+
+        # Build results
+        results = []
+        game_type_names = {0: 'Elite', 1: 'AvgVsAvg', 2: 'Mismatch', 3: 'Standard'}
+
+        for i in range(len(X_scaled)):
+            margin = margin_pred[i]
+            prob = cover_prob[i]
+            game_type = game_types[i]
+            router_conf = confidences[i]
+            unc = uncertainty[i] if uncertainty is not None else 7.0
+
+            # Get spread
+            if vegas_spread is not None:
+                if isinstance(vegas_spread, (list, np.ndarray)):
+                    spread = vegas_spread[i]
+                else:
+                    spread = vegas_spread
+            else:
+                spread = 0
+
+            # Calculate edge
+            edge = margin - (-spread)
+
+            # Determine confidence tier based on calibrated probability + router confidence
+            combined_conf = abs(prob - 0.5) * router_conf
+            if combined_conf >= 0.20:
+                conf_tier = 'HIGH'
+            elif combined_conf >= 0.15:
+                conf_tier = 'MEDIUM-HIGH'
+            elif combined_conf >= 0.10:
+                conf_tier = 'MEDIUM'
+            elif combined_conf >= 0.05:
+                conf_tier = 'LOW'
+            else:
+                conf_tier = 'VERY LOW'
+
+            # Bet recommendation
+            bet_home = edge > 0
+            edge_abs = abs(edge)
+            prob_confidence = abs(prob - 0.5)
+
+            # Quality penalty for AvgVsAvg games (where V21 struggled)
+            quality_penalty = -2 if game_type == 1 else 0
+
+            # BET only if strong confidence AND good edge
+            if quality_penalty <= -2 and edge_abs < 6:
+                recommendation = 'PASS'
+            elif edge_abs >= 4.5 and prob_confidence >= 0.15 and router_conf >= 0.5:
+                recommendation = 'BET'
+            elif edge_abs >= 3.0 and prob_confidence >= 0.10:
+                recommendation = 'LEAN'
+            else:
+                recommendation = 'PASS'
+
+            results.append({
+                'predicted_margin': margin,
+                'predicted_edge': edge,
+                'cover_probability': prob,
+                'confidence_tier': conf_tier,
+                'bet_recommendation': recommendation,
+                'pick_side': 'HOME' if bet_home else 'AWAY',
+                'game_quality_score': quality_penalty,
+                'game_type': game_type_names.get(game_type, 'Unknown'),
+                'router_confidence': router_conf,
+                'uncertainty': unc,
+                'blowout_prob': blowout_prob[i] if blowout_prob is not None else 0.0,
+            })
+
+        return results
+
+    @classmethod
+    def load(cls, path_prefix: str = 'cfb') -> 'V22MetaRouterModel':
+        """Load V22 model from file."""
+        model = cls()
+
+        with open(f'{path_prefix}_v22_meta.pkl', 'rb') as f:
+            data = pickle.load(f)
+            model.meta_router = data['meta_router']
+            model.elite_model = data['elite_model']
+            model.avgvsavg_model = data['avgvsavg_model']
+            model.mismatch_model = data['mismatch_model']
+            model.standard_model = data['standard_model']
+            model.feature_names = data['feature_names']
+            model.router_feature_names = data['router_feature_names']
+            model.scaler = data['scaler']
+            model.metrics = data.get('metrics', {})
+
+        return model
+
+
+def load_v22_meta_model(model_path: str = 'cfb') -> V22MetaRouterModel:
+    """
+    Load the V22 meta-router model.
+
+    Args:
+        model_path: Path prefix for model files (without _v22_meta.pkl suffix)
+
+    Returns:
+        V22MetaRouterModel instance
+    """
+    return V22MetaRouterModel.load(model_path)
+
+
+def classify_game_type_v22(home: str, away: str, elo_diff: float, spread: float,
+                           avg_elo: float) -> Dict[str, Any]:
+    """
+    Classify game type for V22 meta-router.
+
+    Returns:
+        Dict with game type classification and features
+    """
+    is_fcs_game = home in FCS_TEAMS or away in FCS_TEAMS
+    elo_diff_abs = abs(elo_diff)
+    spread_abs = abs(spread)
+
+    # Classification logic matching train_v22_meta.py
+    if avg_elo > 1550 and elo_diff_abs < 150 and spread_abs < 10:
+        game_type = 0  # Elite
+        game_type_name = 'Elite'
+    elif avg_elo < 1550 and elo_diff_abs < 100 and spread_abs < 7:
+        game_type = 1  # AvgVsAvg
+        game_type_name = 'AvgVsAvg'
+    elif spread_abs > 14 or is_fcs_game:
+        game_type = 2  # Mismatch
+        game_type_name = 'Mismatch'
+    else:
+        game_type = 3  # Standard
+        game_type_name = 'Standard'
+
+    return {
+        'game_type': game_type,
+        'game_type_name': game_type_name,
+        'is_fcs_game': is_fcs_game,
+        'elo_diff_abs': elo_diff_abs,
+        'avg_elo': avg_elo,
+        'is_mismatch': spread_abs > 14,
+    }
+
+
+def generate_v22_predictions(
+    games: List[Dict],
+    lines_dict: Dict[str, Dict],
+    model: V22MetaRouterModel,
+    history_df: pd.DataFrame,
+    season: int,
+    week: int,
+    bankroll: float,
+    weather_dict: Optional[Dict[int, Dict]] = None,
+) -> pd.DataFrame:
+    """
+    Generate predictions using V22 meta-router model.
+
+    Args:
+        games: List of game dicts from CFBD API
+        lines_dict: Dict of betting lines keyed by home team
+        model: V22MetaRouterModel instance
+        history_df: Historical games DataFrame for feature calculation
+        season: Current season year
+        week: Current week number
+        bankroll: Bankroll for bet sizing
+        weather_dict: Optional dict of weather data keyed by game_id
+
+    Returns DataFrame with predictions for each game.
+    """
+    predictions = []
+
+    if weather_dict is None:
+        weather_dict = {}
+
+    for game in games:
+        try:
+            home = game.get('homeTeam') or game.get('home_team')
+            away = game.get('awayTeam') or game.get('away_team')
+
+            if not home or not away or home not in lines_dict:
+                continue
+
+            vegas_spread = lines_dict[home]['spread_current']
+            line_movement = lines_dict[home]['line_movement']
+            spread_open = lines_dict[home].get('spread_opening', vegas_spread)
+
+            venue = game.get('venue') or game.get('venue_name') or ''
+
+            game_id = game.get('id')
+            game_weather = weather_dict.get(game_id, {})
+            wind_speed = game_weather.get('wind_speed', 0)
+            temperature = game_weather.get('temperature', 65)
+
+            # Calculate V19 features (V22 uses same base features minus toxic ones)
+            features = calculate_v19_features_for_game(
+                home, away, history_df, season, week, vegas_spread,
+                spread_open=spread_open, line_movement=line_movement,
+                wind_speed=wind_speed, temperature=temperature, venue=venue
+            )
+
+            # Get V22 prediction
+            result = model.predict(features, vegas_spread=vegas_spread)[0]
+
+            pred_spread_error = result['predicted_edge']
+            cover_prob = result['cover_probability']
+            predicted_margin = result['predicted_margin']
+            confidence_tier = result['confidence_tier']
+            bet_recommendation = result['bet_recommendation']
+            pick_side = result['pick_side']
+            game_quality = result.get('game_quality_score', 0)
+            game_type = result.get('game_type', 'Unknown')
+            router_conf = result.get('router_confidence', 0.5)
+            uncertainty = result.get('uncertainty', 7.0)
+            blowout_prob = result.get('blowout_prob', 0.0)
+
+            # Determine signal from pick_side
+            if pick_side == 'HOME':
+                signal = 'BUY'
+                team_to_bet = home
+                opponent = away
+                spread_to_bet = vegas_spread
+            else:
+                signal = 'FADE'
+                team_to_bet = away
+                opponent = home
+                spread_to_bet = -vegas_spread
+
+            tier_mapping = {
+                'HIGH': ('confidence-high', '🔥'),
+                'MEDIUM-HIGH': ('confidence-medium-high', '✅'),
+                'MEDIUM': ('confidence-medium', '⚠️'),
+                'LOW': ('confidence-low', '⚡'),
+                'VERY LOW': ('confidence-very-low', '❄️'),
+            }
+            confidence_class, confidence_emoji = tier_mapping.get(
+                confidence_tier, ('confidence-medium', '⚠️')
+            )
+
+            # Calculate bet size
+            edge = cover_prob - 0.5
+            if edge > 0:
+                kelly_fraction = edge / 0.91
+                kelly_fraction = min(kelly_fraction, 0.05)
+                # Reduce bet size for uncertain games
+                kelly_fraction *= (1 - uncertainty / 30)
+                bet_size = bankroll * max(0, kelly_fraction)
+            else:
+                bet_size = 0
+
+            if bet_recommendation == 'PASS':
+                bet_size = 0
+            elif bet_recommendation == 'LEAN':
+                bet_size = bet_size * 0.5
+
+            if pick_side == 'HOME':
+                effective_prob = cover_prob
+                effective_edge = pred_spread_error
+            else:
+                effective_prob = 1 - cover_prob
+                effective_edge = -pred_spread_error
+
+            predictions.append({
+                'Home': home,
+                'Away': away,
+                'Game': f"{away} @ {home}",
+                'Signal': signal,
+                'team_to_bet': team_to_bet,
+                'opponent': opponent,
+                'spread_to_bet': spread_to_bet,
+                'vegas_spread': vegas_spread,
+                'spread_error': effective_edge,
+                'predicted_margin': predicted_margin,
+                'win_prob': effective_prob,
+                'cover_probability': effective_prob,
+                'bet_size': bet_size,
+                'line_movement': line_movement,
+                'confidence_tier': confidence_tier,
+                'confidence_class': confidence_class,
+                'confidence_emoji': confidence_emoji,
+                'bet_recommendation': bet_recommendation,
+                'game_quality': game_quality,
+                'game_type': game_type,
+                'router_confidence': router_conf,
+                'uncertainty': uncertainty,
+                'blowout_prob': blowout_prob,
+                'start_date': game.get('start_date') or game.get('startDate'),
+                'completed': game.get('completed', False),
+                'game_id': game.get('id'),
+            })
+        except Exception as e:
+            logger.error(f"V22 error predicting {game.get('awayTeam', '?')} @ {game.get('homeTeam', '?')}: {e}")
 
     return pd.DataFrame(predictions)

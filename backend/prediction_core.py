@@ -74,9 +74,7 @@ V19_FEATURES = [
 ]
 
 # Import FBS teams allowlist for V22 FBS-only model
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# fbs_teams.py must be in the same directory as this file (backend/)
 from fbs_teams import (
     get_fbs_teams, is_fbs_game as check_fbs_game, is_fbs_team,
     normalize_team_name, get_team_conference, get_conference_matchup,

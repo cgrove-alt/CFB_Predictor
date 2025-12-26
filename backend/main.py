@@ -620,12 +620,48 @@ async def debug_predictions(
         debug_info["steps"].append(f"4. CFBD lines ERROR: {str(e)}")
 
     # Step 5: Match games to lines
-    matched = 0
+    lines_dict = {}
     for game in valid_cfbd_games:
         home = game.get('home_team')
         if home in cfbd_lines:
-            matched += 1
-    debug_info["steps"].append(f"5. Games with CFBD lines: {matched}")
+            lines_dict[home] = cfbd_lines[home]
+    debug_info["steps"].append(f"5. Games with CFBD lines: {len(lines_dict)}")
+
+    # Step 6: Try to generate predictions
+    try:
+        from predictor import generate_predictions, load_v19_model, load_history_data
+
+        model = load_v19_model()
+        debug_info["steps"].append("6. Model loaded: OK")
+
+        history_df = load_history_data()
+        debug_info["steps"].append(f"7. History data: {len(history_df)} rows")
+
+        # Try generating for first 3 games only
+        test_games = valid_cfbd_games[:3]
+        test_lines = {g['home_team']: lines_dict[g['home_team']] for g in test_games if g['home_team'] in lines_dict}
+
+        if test_lines:
+            predictions = generate_predictions(
+                games=test_games,
+                lines_dict=test_lines,
+                season=season,
+                week=1,
+                bankroll=1000,
+                season_type=season_type,
+            )
+            debug_info["steps"].append(f"8. Test predictions: {len(predictions)} results")
+            if predictions:
+                debug_info["sample_prediction"] = {
+                    "home": predictions[0].get("home_team"),
+                    "recommendation": predictions[0].get("bet_recommendation"),
+                }
+        else:
+            debug_info["steps"].append("8. No test games with lines")
+    except Exception as e:
+        import traceback
+        debug_info["steps"].append(f"6-8. Prediction ERROR: {str(e)}")
+        debug_info["error_traceback"] = traceback.format_exc()
 
     return debug_info
 

@@ -670,9 +670,26 @@ async def debug_predictions(
                     test_home, test_away, history_df, season, 1, vegas
                 )
                 debug_info["single_test"]["features_calculated"] = True
-                debug_info["single_test"]["num_features"] = len(features.columns) if hasattr(features, 'columns') else 'N/A'
+                debug_info["single_test"]["features_shape"] = str(features.shape) if hasattr(features, 'shape') else 'N/A'
+
+                # Now try model prediction
+                try:
+                    result = model.predict(features, vegas_spread=vegas)
+                    debug_info["single_test"]["model_prediction"] = "OK"
+                    if result:
+                        debug_info["single_test"]["prediction_sample"] = {
+                            "pick_side": result[0].get("pick_side"),
+                            "cover_probability": result[0].get("cover_probability"),
+                        }
+                except Exception as me:
+                    import traceback
+                    debug_info["single_test"]["model_error"] = str(me)
+                    debug_info["single_test"]["model_traceback"] = traceback.format_exc()[:500]
+
             except Exception as fe:
+                import traceback
                 debug_info["single_test"]["features_error"] = str(fe)
+                debug_info["single_test"]["features_traceback"] = traceback.format_exc()[:500]
 
             # Now try full prediction
             predictions = generate_predictions(

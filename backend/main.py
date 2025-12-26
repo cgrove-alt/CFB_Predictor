@@ -2,6 +2,8 @@
 Sharp Sports Predictor - FastAPI Backend
 
 Railway deployment backend for CFB predictions.
+
+Deployed: 2025-12-26 16:12 PST (ESPN fallback + CFBD lines fix)
 """
 
 import os

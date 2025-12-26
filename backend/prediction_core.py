@@ -583,11 +583,12 @@ def calculate_v19_features_for_game(
         cold_game,
         wind_pass_impact,
 
-        # QB availability features (4) - V21
-        qb_features.get('home_qb_status', 0) if qb_features else 0,
-        qb_features.get('away_qb_status', 0) if qb_features else 0,
-        qb_features.get('qb_advantage', 0) if qb_features else 0,
-        qb_features.get('qb_uncertainty_diff', 0) if qb_features else 0,
+        # QB availability features - REMOVED for V19 compatibility
+        # V21+ would add these features when using V21 model:
+        # qb_features.get('home_qb_status', 0) if qb_features else 0,
+        # qb_features.get('away_qb_status', 0) if qb_features else 0,
+        # qb_features.get('qb_advantage', 0) if qb_features else 0,
+        # qb_features.get('qb_uncertainty_diff', 0) if qb_features else 0,
     ]])
 
     return features

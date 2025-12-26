@@ -3,6 +3,7 @@
 import { Prediction } from '@/lib/types'
 import { PredictionBadge, ConfidenceBadge } from './PredictionBadge'
 import { GameStatusBadge } from './GameStatusBadge'
+import { EdgeTooltip } from './InfoTooltip'
 
 interface HeroSectionProps {
   predictions: Prediction[]
@@ -103,8 +104,9 @@ function HeroCard({ prediction, bankroll }: HeroCardProps) {
 
       {/* Edge and Stats */}
       <div className="border-t border-slate-700 pt-4">
-        <p className="text-amber-400 text-sm mb-2">
+        <p className="text-amber-400 text-sm mb-2 flex items-center">
           Predicted edge: {predicted_edge >= 0 ? '+' : ''}{predicted_edge.toFixed(1)} pts vs Vegas
+          <EdgeTooltip />
         </p>
 
         <div className="grid grid-cols-3 gap-4 text-sm">

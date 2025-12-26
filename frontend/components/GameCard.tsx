@@ -3,6 +3,7 @@
 import { Prediction } from '@/lib/types'
 import { PredictionBadge, ConfidenceBadge } from './PredictionBadge'
 import { GameStatusBadge } from './GameStatusBadge'
+import { EdgeTooltip } from './InfoTooltip'
 
 interface GameCardProps {
   prediction: Prediction
@@ -93,7 +94,9 @@ export function GameCard({ prediction, bankroll, isHero = false }: GameCardProps
 
         {/* Edge */}
         <div className="bg-slate-900/30 rounded p-2">
-          <p className="text-xs text-slate-400 uppercase tracking-wide">Edge</p>
+          <p className="text-xs text-slate-400 uppercase tracking-wide flex items-center">
+            Edge <EdgeTooltip />
+          </p>
           <p className={`text-lg font-bold ${
             Math.abs(predicted_edge) >= 4.5 ? 'text-emerald-400' :
             Math.abs(predicted_edge) >= 2.5 ? 'text-amber-400' : 'text-slate-300'

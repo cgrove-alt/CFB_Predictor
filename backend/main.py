@@ -212,8 +212,83 @@ def get_cfbd_headers():
     return {'Authorization': f'Bearer {CFBD_API_KEY}'}
 
 
+def fetch_games_from_espn(season_type: str = 'regular') -> list:
+    """
+    Fetch games from ESPN API as fallback when CFBD returns empty.
+
+    ESPN API is free and doesn't require authentication.
+    Returns games in CFBD-compatible format.
+    """
+    try:
+        # ESPN seasontype: 2=regular, 3=postseason
+        espn_season_type = "3" if season_type == 'postseason' else "2"
+        # groups=80 is FBS (top-level college football)
+        url = f"https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=80&limit=100&seasontype={espn_season_type}"
+
+        logger.info(f"Fetching games from ESPN: {url}")
+        resp = requests.get(url, timeout=10)
+
+        if resp.status_code != 200:
+            logger.warning(f"ESPN API returned {resp.status_code}")
+            return []
+
+        data = resp.json()
+        events = data.get('events', [])
+
+        # Convert ESPN format to CFBD-compatible format
+        games = []
+        for event in events:
+            # Skip completed games for predictions
+            status = event.get('status', {}).get('type', {}).get('name', '')
+            if 'FINAL' in status:
+                continue
+
+            competitions = event.get('competitions', [])
+            if not competitions:
+                continue
+
+            comp = competitions[0]
+            competitors = comp.get('competitors', [])
+
+            if len(competitors) != 2:
+                continue
+
+            # ESPN: order=0 is home, order=1 is away
+            home_team = None
+            away_team = None
+            for c in competitors:
+                team_data = c.get('team', {})
+                # Use 'location' for cleaner name (e.g., "Ohio State" vs "Ohio State Buckeyes")
+                team_name = team_data.get('location', team_data.get('displayName', team_data.get('name', '')))
+
+                if c.get('homeAway') == 'home':
+                    home_team = team_name
+                else:
+                    away_team = team_name
+
+            if home_team and away_team:
+                games.append({
+                    'id': int(event.get('id', 0)),
+                    'home_team': home_team,
+                    'away_team': away_team,
+                    'homeTeam': home_team,  # CFBD uses camelCase
+                    'awayTeam': away_team,
+                    'start_date': event.get('date'),
+                    'completed': 'FINAL' in status,
+                    'venue': comp.get('venue', {}).get('fullName', ''),
+                    'source': 'ESPN',
+                })
+
+        logger.info(f"Fetched {len(games)} upcoming games from ESPN")
+        return games
+
+    except Exception as e:
+        logger.error(f"Error fetching from ESPN: {e}")
+        return []
+
+
 def fetch_games_from_cfbd(season: int, week: int, season_type: str = 'regular') -> list:
-    """Fetch games from CFBD API."""
+    """Fetch games from CFBD API, with ESPN fallback for postseason."""
     try:
         if season_type == 'postseason':
             url = f"{CFBD_BASE_URL}/games?year={season}&seasonType={season_type}"
@@ -226,17 +301,33 @@ def fetch_games_from_cfbd(season: int, week: int, season_type: str = 'regular') 
         if resp.status_code == 200:
             games = resp.json()
             logger.info(f"Fetched {len(games)} games from CFBD")
+
+            # If CFBD returns empty for postseason, try ESPN as fallback
+            if not games and season_type == 'postseason':
+                logger.info("CFBD returned no postseason games, trying ESPN fallback...")
+                games = fetch_games_from_espn(season_type)
+
             return games
         elif resp.status_code == 401:
             logger.error(f"CFBD API returned 401 Unauthorized - check CFBD_API_KEY")
             raise HTTPException(status_code=401, detail="CFBD API key is invalid or expired")
         else:
             logger.warning(f"CFBD games API returned {resp.status_code}: {resp.text}")
+            # Try ESPN fallback for postseason
+            if season_type == 'postseason':
+                logger.info("CFBD failed, trying ESPN fallback...")
+                return fetch_games_from_espn(season_type)
             return []
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error fetching games: {e}")
+        # Try ESPN fallback for postseason
+        if season_type == 'postseason':
+            logger.info("CFBD error, trying ESPN fallback...")
+            espn_games = fetch_games_from_espn(season_type)
+            if espn_games:
+                return espn_games
         raise HTTPException(status_code=500, detail=f"Error fetching games: {str(e)}")
 
 
@@ -406,8 +497,9 @@ async def get_games(
 
     games = []
     for g in games_data:
-        home = g.get('home_team')
-        away = g.get('away_team')
+        # Support both snake_case (ESPN/normalized) and camelCase (CFBD)
+        home = g.get('home_team') or g.get('homeTeam')
+        away = g.get('away_team') or g.get('awayTeam')
 
         # Skip games with missing team names
         if not home or not away:
@@ -423,8 +515,8 @@ async def get_games(
             start_date=g.get('start_date'),
             completed=g.get('completed', False),
             venue=g.get('venue'),
-            home_points=g.get('home_points'),
-            away_points=g.get('away_points'),
+            home_points=g.get('home_points') or g.get('homePoints'),
+            away_points=g.get('away_points') or g.get('awayPoints'),
             vegas_spread=line_info.get('spread_current'),
             over_under=line_info.get('over_under'),
         ))
@@ -580,8 +672,21 @@ async def get_predictions(
                 }
                 logger.debug(f"Using live odds only for {home}: {live_spread} (no CFBD data)")
 
+    # If no lines available, return empty predictions (not an error for bowl games)
     if not lines_dict:
-        raise HTTPException(status_code=404, detail="No betting lines available from either source")
+        logger.warning(f"No betting lines available for {len(valid_games)} games")
+        # Return empty predictions with game info for display
+        return PredictionsResponse(
+            season=season,
+            week=week,
+            season_type=season_type,
+            last_refresh=None,
+            predictions=[],
+            total_games=len(valid_games),
+            bet_count=0,
+            lean_count=0,
+            pass_count=0,
+        )
 
     # Generate predictions (with weather data if CFBD Pro tier available)
     try:

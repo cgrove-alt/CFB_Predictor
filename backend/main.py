@@ -639,7 +639,13 @@ async def debug_predictions(
 
         # Try generating for first 3 games only
         test_games = valid_cfbd_games[:3]
+        debug_info["test_games"] = [{
+            "home_team": g.get('home_team'),
+            "homeTeam": g.get('homeTeam'),
+        } for g in test_games]
+
         test_lines = {g['home_team']: lines_dict[g['home_team']] for g in test_games if g['home_team'] in lines_dict}
+        debug_info["test_lines_keys"] = list(test_lines.keys())
 
         if test_lines:
             predictions = generate_predictions(

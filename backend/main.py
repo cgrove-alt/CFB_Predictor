@@ -574,6 +574,62 @@ async def get_live_odds():
     )
 
 
+@app.get("/api/debug/predictions")
+async def debug_predictions(
+    season: int = Query(2025),
+    season_type: str = Query("postseason"),
+):
+    """Debug endpoint to trace prediction flow."""
+    from odds_fetcher import fetch_ncaaf_spreads
+
+    debug_info = {"steps": []}
+
+    # Step 1: Fetch live odds
+    live_odds = fetch_ncaaf_spreads()
+    debug_info["steps"].append(f"1. Live odds: {len(live_odds)} games")
+
+    # Step 2: Fetch CFBD games
+    try:
+        cfbd_games = fetch_games_from_cfbd(season, 1, season_type)
+        debug_info["steps"].append(f"2. CFBD games: {len(cfbd_games)} games")
+        if cfbd_games:
+            sample = cfbd_games[0]
+            debug_info["sample_game_keys"] = list(sample.keys())[:10]
+            debug_info["sample_home"] = sample.get('homeTeam') or sample.get('home_team')
+    except Exception as e:
+        debug_info["steps"].append(f"2. CFBD games ERROR: {str(e)}")
+
+    # Step 3: Filter valid games
+    valid_cfbd_games = []
+    for game in cfbd_games:
+        home = game.get('homeTeam') or game.get('home_team')
+        away = game.get('awayTeam') or game.get('away_team')
+        if home and away:
+            game['home_team'] = home
+            game['away_team'] = away
+            valid_cfbd_games.append(game)
+    debug_info["steps"].append(f"3. Valid games: {len(valid_cfbd_games)}")
+
+    # Step 4: Fetch CFBD lines
+    try:
+        cfbd_lines = fetch_lines_from_cfbd(season, 1, season_type)
+        debug_info["steps"].append(f"4. CFBD lines: {len(cfbd_lines)} games")
+        if cfbd_lines:
+            debug_info["sample_line_keys"] = list(cfbd_lines.keys())[:5]
+    except Exception as e:
+        debug_info["steps"].append(f"4. CFBD lines ERROR: {str(e)}")
+
+    # Step 5: Match games to lines
+    matched = 0
+    for game in valid_cfbd_games:
+        home = game.get('home_team')
+        if home in cfbd_lines:
+            matched += 1
+    debug_info["steps"].append(f"5. Games with CFBD lines: {matched}")
+
+    return debug_info
+
+
 @app.get("/api/predictions", response_model=PredictionsResponse)
 async def get_predictions(
     season: int = Query(..., description="Season year"),

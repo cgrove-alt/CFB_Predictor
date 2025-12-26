@@ -646,8 +646,35 @@ async def debug_predictions(
 
         test_lines = {g['home_team']: lines_dict[g['home_team']] for g in test_games if g['home_team'] in lines_dict}
         debug_info["test_lines_keys"] = list(test_lines.keys())
+        if test_lines:
+            sample_team = list(test_lines.keys())[0]
+            debug_info["sample_line_data"] = test_lines[sample_team]
 
         if test_lines:
+            # Try to manually predict one game to see exact error
+            test_game = test_games[0]
+            test_home = test_game.get('home_team')
+            test_away = test_game.get('away_team') or test_game.get('awayTeam')
+            debug_info["single_test"] = {
+                "home": test_home,
+                "away": test_away,
+                "in_lines": test_home in test_lines,
+                "lines_data": test_lines.get(test_home),
+            }
+
+            # Try to calculate features for one game
+            try:
+                from prediction_core import calculate_v19_features_for_game
+                vegas = test_lines[test_home]['spread_current']
+                features = calculate_v19_features_for_game(
+                    test_home, test_away, history_df, season, 1, vegas
+                )
+                debug_info["single_test"]["features_calculated"] = True
+                debug_info["single_test"]["num_features"] = len(features.columns) if hasattr(features, 'columns') else 'N/A'
+            except Exception as fe:
+                debug_info["single_test"]["features_error"] = str(fe)
+
+            # Now try full prediction
             predictions = generate_predictions(
                 games=test_games,
                 lines_dict=test_lines,

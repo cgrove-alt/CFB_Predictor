@@ -7,6 +7,8 @@ Consolidates all feature engineering logic:
 - Situational factors
 - Interaction features
 - Line movement features
+- V22: Style matchup features
+- V22: Volatility features
 """
 
 from typing import Dict, List, Optional, Tuple
@@ -18,6 +20,32 @@ from ..utils.logging_config import get_logger
 from .momentum import MomentumTracker
 
 logger = get_logger(__name__)
+
+# V22: FCS/small-school teams to exclude or flag (high error rates)
+FCS_TEAMS = {
+    'Samford', 'Davidson', 'Idaho State', 'Northern Arizona', 'Cal Poly',
+    'Sacramento State', 'Montana', 'Montana State', 'Eastern Washington',
+    'Weber State', 'UC Davis', 'Portland State', 'Southern Utah',
+    'Abilene Christian', 'Incarnate Word', 'Stephen F. Austin', 'Sam Houston',
+    'Tarleton State', 'Lamar', 'McNeese', 'Nicholls', 'Northwestern State',
+    'SE Louisiana', 'Houston Christian', 'Texas A&M-Commerce',
+    'Alabama A&M', 'Alabama State', 'Alcorn State', 'Arkansas-Pine Bluff',
+    'Bethune-Cookman', 'Delaware State', 'FAMU', 'Grambling', 'Howard',
+    'Jackson State', 'Mississippi Valley State', 'Morgan State', 'Norfolk State',
+    'North Carolina A&T', 'North Carolina Central', 'Prairie View A&M',
+    'SC State', 'Southern', 'Texas Southern', 'Kennesaw State', 'North Alabama',
+    'Jacksonville State', 'Central Arkansas', 'Austin Peay', 'Eastern Kentucky',
+    'Lindenwood', 'Southern Indiana', 'Western Illinois', 'Tennessee State',
+    'Tennessee Tech', 'UT Martin', 'Southeast Missouri', 'Murray State',
+    'Morehead State', 'Idaho', 'Eastern Illinois', 'Monmouth', 'Delaware',
+    'Maine', 'New Hampshire', 'Rhode Island', 'Stony Brook', 'Villanova',
+    'William & Mary', 'Towson', 'Elon', 'Richmond', 'James Madison',
+}
+
+# V22: Toxic features to drop (from error analysis)
+TOXIC_FEATURES = [
+    'away_scoring_trend',  # 1.73x error amplification
+]
 
 
 class FeatureEngineer:
@@ -88,6 +116,18 @@ class FeatureEngineer:
         # Add line movement features
         if include_line_movement and 'spread_line' in df.columns:
             df = self._add_line_movement_features(df)
+
+        # V22: Add style matchup features
+        df = self._add_style_matchup_features(df)
+
+        # V22: Add volatility features
+        df = self._add_volatility_features(df)
+
+        # V22: Add FCS team flags
+        df = self._add_fcs_flags(df)
+
+        # V22: Drop toxic features
+        df = self._drop_toxic_features(df)
 
         logger.info(f"Feature engineering complete. Total columns: {len(df.columns)}")
         return df
@@ -442,3 +482,152 @@ class FeatureEngineer:
             return self.config.features.stacking_features
         else:
             raise ValueError(f"Unknown feature version: {version}")
+
+    # =========================================================================
+    # V22 META-ROUTER FEATURES
+    # =========================================================================
+
+    def _add_style_matchup_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Add style matchup features to differentiate "Average vs Average" games.
+
+        These features measure how well a team's offensive style matches up against
+        the opponent's defensive weaknesses, helping the Meta-Router identify
+        games where style mismatch creates predictable outcomes.
+        """
+        # Pass offense vs pass defense mismatch
+        # Positive = home team's pass offense outmatches away's pass defense
+        if 'home_comp_pass_ppa' in df.columns and 'away_comp_def_ppa' in df.columns:
+            df['pass_off_vs_pass_def_mismatch'] = (
+                df['home_comp_pass_ppa'] - df['away_comp_def_ppa']
+            )
+        elif 'home_off_pass_success' in df.columns and 'away_def_pass_success' in df.columns:
+            # Fallback to success rates if PPA not available
+            df['pass_off_vs_pass_def_mismatch'] = (
+                df['home_off_pass_success'] - df['away_def_pass_success']
+            )
+        else:
+            df['pass_off_vs_pass_def_mismatch'] = 0.0
+
+        # Rush offense vs rush defense mismatch
+        # Positive = home team's rush offense outmatches away's rush defense
+        if 'home_comp_rush_ppa' in df.columns and 'away_comp_def_ppa' in df.columns:
+            df['rush_off_vs_rush_def_mismatch'] = (
+                df['home_comp_rush_ppa'] - df['away_comp_def_ppa']
+            )
+        elif 'home_off_rush_success' in df.columns and 'away_def_rush_success' in df.columns:
+            # Fallback to success rates if PPA not available
+            df['rush_off_vs_rush_def_mismatch'] = (
+                df['home_off_rush_success'] - df['away_def_rush_success']
+            )
+        else:
+            df['rush_off_vs_rush_def_mismatch'] = 0.0
+
+        # Combined style mismatch (overall advantage)
+        df['style_mismatch_total'] = (
+            df['pass_off_vs_pass_def_mismatch'] + df['rush_off_vs_rush_def_mismatch']
+        )
+
+        # Style balance indicator (pass-heavy vs balanced)
+        # High absolute value = one-dimensional offense
+        if df['pass_off_vs_pass_def_mismatch'].std() > 0:
+            df['style_balance'] = (
+                df['pass_off_vs_pass_def_mismatch'] - df['rush_off_vs_rush_def_mismatch']
+            ).abs()
+        else:
+            df['style_balance'] = 0.0
+
+        logger.debug(f"Added style matchup features. Mean pass mismatch: {df['pass_off_vs_pass_def_mismatch'].mean():.3f}")
+        return df
+
+    def _add_volatility_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Add volatility features to measure game unpredictability.
+
+        Teams with high scoring volatility (inconsistent performance) are harder
+        to predict. This helps the Meta-Router route volatile matchups to
+        specialized models or adjust uncertainty.
+        """
+        home_volatility = []
+        away_volatility = []
+        home_def_volatility = []
+        away_def_volatility = []
+
+        for _, row in df.iterrows():
+            # Home team volatility (last 5 games)
+            home_games = self._get_last_n_games(
+                row['home_team'], row['season'], row['week'], 5
+            )
+            if len(home_games) >= 3:
+                home_scores = [g['points_scored'] for g in home_games]
+                home_allowed = [g['points_allowed'] for g in home_games]
+                home_volatility.append(np.std(home_scores))
+                home_def_volatility.append(np.std(home_allowed))
+            else:
+                # Default volatility for teams with limited history
+                home_volatility.append(10.0)  # Average CFB std dev
+                home_def_volatility.append(10.0)
+
+            # Away team volatility (last 5 games)
+            away_games = self._get_last_n_games(
+                row['away_team'], row['season'], row['week'], 5
+            )
+            if len(away_games) >= 3:
+                away_scores = [g['points_scored'] for g in away_games]
+                away_allowed = [g['points_allowed'] for g in away_games]
+                away_volatility.append(np.std(away_scores))
+                away_def_volatility.append(np.std(away_allowed))
+            else:
+                away_volatility.append(10.0)
+                away_def_volatility.append(10.0)
+
+        df['home_volatility'] = home_volatility
+        df['away_volatility'] = away_volatility
+        df['home_def_volatility'] = home_def_volatility
+        df['away_def_volatility'] = away_def_volatility
+
+        # Combined volatility index (higher = more unpredictable matchup)
+        df['volatility_index'] = (
+            df['home_volatility'] + df['away_volatility'] +
+            df['home_def_volatility'] + df['away_def_volatility']
+        ) / 4.0
+
+        # Volatility differential (high away volatility = underdog unpredictable)
+        df['volatility_diff'] = df['home_volatility'] - df['away_volatility']
+
+        logger.debug(f"Added volatility features. Mean volatility index: {df['volatility_index'].mean():.2f}")
+        return df
+
+    def _add_fcs_flags(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Add FCS team flags for games involving small-school outliers.
+
+        FCS teams cause high prediction errors (e.g., Samford MAE 24.0) because:
+        1. Limited data quality
+        2. Scheduling incentives (paid losses)
+        3. Talent gap makes spreads unreliable
+        """
+        df['is_home_fcs'] = df['home_team'].isin(FCS_TEAMS).astype(int)
+        df['is_away_fcs'] = df['away_team'].isin(FCS_TEAMS).astype(int)
+        df['is_fcs_game'] = ((df['is_home_fcs'] == 1) | (df['is_away_fcs'] == 1)).astype(int)
+
+        fcs_count = df['is_fcs_game'].sum()
+        logger.debug(f"Flagged {fcs_count} games involving FCS teams")
+        return df
+
+    def _drop_toxic_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Drop features identified as error amplifiers in error_insights.txt.
+
+        Toxic features cause the model to make larger errors:
+        - away_scoring_trend: 1.73x error amplification
+        """
+        dropped = []
+        for feature in TOXIC_FEATURES:
+            if feature in df.columns:
+                df = df.drop(columns=[feature])
+                dropped.append(feature)
+
+        if dropped:
+            logger.info(f"Dropped toxic features: {dropped}")
+        return df

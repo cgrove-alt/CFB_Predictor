@@ -36,6 +36,7 @@ from prediction_core import (
     # Data fetching
     fetch_schedule,
     fetch_lines,
+    fetch_weather,  # NEW: Weather data from CFBD Pro
     build_lines_dict,
     get_api_headers,
 
@@ -175,7 +176,7 @@ def load_history_data():
 # =============================================================================
 # GENERATE PREDICTIONS (Uses shared logic)
 # =============================================================================
-def generate_predictions(games, lines_dict, season, week, bankroll=1000):
+def generate_predictions(games, lines_dict, season, week, bankroll=1000, season_type='regular'):
     """
     Generate predictions for a list of games.
 
@@ -188,12 +189,46 @@ def generate_predictions(games, lines_dict, season, week, bankroll=1000):
         season: Season year
         week: Week number
         bankroll: Bankroll for Kelly sizing
+        season_type: 'regular' or 'postseason'
 
     Returns:
         List of prediction dicts
     """
     model = load_v19_model()
     history_df = load_history_data()
+
+    # Fetch weather data from CFBD Pro tier (if available)
+    # This activates the 6 weather features in the V19/V20 model
+    weather_dict = fetch_weather(season, week, season_type)
+    if weather_dict:
+        logger.info(f"Weather data available for {len(weather_dict)} games")
+    else:
+        logger.info("No weather data available (CFBD Pro tier required)")
+
+    # V21: Fetch injury data for QB availability tracking
+    injury_df = None
+    try:
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).parent.parent))
+        from fetch_injuries import fetch_all_injuries
+
+        # Get list of teams in games
+        teams = []
+        for game in games:
+            home = game.get('homeTeam') or game.get('home_team')
+            away = game.get('awayTeam') or game.get('away_team')
+            if home:
+                teams.append(home)
+            if away:
+                teams.append(away)
+
+        if teams:
+            injury_df = fetch_all_injuries(teams)
+            if not injury_df.empty:
+                logger.info(f"Injury data available for {injury_df['team'].nunique()} teams")
+    except Exception as e:
+        logger.warning(f"Could not fetch injury data: {e}")
 
     # Use the shared generate_v19_predictions function
     df = generate_v19_predictions(
@@ -203,7 +238,9 @@ def generate_predictions(games, lines_dict, season, week, bankroll=1000):
         history_df=history_df,
         season=season,
         week=week,
-        bankroll=bankroll
+        bankroll=bankroll,
+        weather_dict=weather_dict,  # Pass weather data
+        injury_df=injury_df  # V21: Pass injury data
     )
 
     if df.empty:

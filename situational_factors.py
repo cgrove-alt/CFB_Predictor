@@ -85,6 +85,156 @@ def is_sandwich_spot(team, current_opponent_elo, next_opponent_elo,
 
     return (current_opponent_elo < weak_threshold) and (next_opponent_elo > strong_threshold)
 
+
+# ============================================================
+# V21: LETDOWN, REVENGE, AND TRAP SPOT DETECTION
+# ============================================================
+
+def is_letdown_spot(team_elo, prev_opponent_elo, prev_result,
+                    current_opponent_elo, elite_threshold=1700, weak_threshold=1500):
+    """
+    Detect 'Letdown Spot' - team likely to underperform after emotional win.
+
+    Conditions:
+    - Previous game was a WIN against ranked/elite opponent (Elo > 1700)
+    - Current opponent is unranked/weaker (Elo < 1500)
+
+    Research: Favorites in letdown spots underperform by 2-3 points.
+
+    Args:
+        team_elo: Current team's Elo rating
+        prev_opponent_elo: Previous opponent's Elo rating
+        prev_result: 'win' or 'loss' in previous game
+        current_opponent_elo: Current opponent's Elo rating
+        elite_threshold: Elo threshold for "elite" opponent (default 1700)
+        weak_threshold: Elo threshold for "weak" opponent (default 1500)
+
+    Returns:
+        bool: True if letdown spot detected
+    """
+    if prev_opponent_elo is None or current_opponent_elo is None or prev_result is None:
+        return False
+
+    # Team won previous game against elite opponent
+    prev_was_big_win = (prev_result.lower() == 'win' and prev_opponent_elo >= elite_threshold)
+
+    # Current opponent is weaker
+    current_is_weak = current_opponent_elo < weak_threshold
+
+    # Team is good (potential favorite)
+    team_is_good = team_elo >= 1600
+
+    return prev_was_big_win and current_is_weak and team_is_good
+
+
+def is_revenge_spot(team, opponent, team_lost_to_opponent_last_meeting):
+    """
+    Detect 'Revenge Spot' - team has extra motivation after previous loss.
+
+    Research: Teams in revenge spots cover at ~53-54% rate.
+
+    Args:
+        team: Team name
+        opponent: Opponent name
+        team_lost_to_opponent_last_meeting: True if team lost previous matchup
+
+    Returns:
+        bool: True if revenge spot detected
+    """
+    return team_lost_to_opponent_last_meeting is True
+
+
+def is_trap_game(team_elo, team_ranking, current_opponent_elo, next_opponent_elo,
+                 ranked_threshold=25, weak_opp_threshold=1400, strong_next_threshold=1650):
+    """
+    Detect 'Trap Game' - ranked team faces weak opponent before big game.
+
+    More strict than sandwich spot - focuses on ranked teams.
+
+    Conditions:
+    - Team is ranked (top 25)
+    - Current opponent is weak (Elo < 1400)
+    - Next opponent is strong/ranked (Elo > 1650)
+
+    Research: Ranked teams in trap games underperform by 2-4 points.
+
+    Args:
+        team_elo: Current team's Elo rating
+        team_ranking: Current AP/CFP ranking (1-25, or None if unranked)
+        current_opponent_elo: Current opponent's Elo rating
+        next_opponent_elo: Next week's opponent Elo rating
+        ranked_threshold: Ranking threshold (default top 25)
+        weak_opp_threshold: Elo for "weak" opponent
+        strong_next_threshold: Elo for "strong" next opponent
+
+    Returns:
+        bool: True if trap game detected
+    """
+    if current_opponent_elo is None or next_opponent_elo is None:
+        return False
+
+    # Team is ranked
+    team_is_ranked = team_ranking is not None and 1 <= team_ranking <= ranked_threshold
+
+    # Or team is elite by Elo
+    team_is_elite = team_elo >= 1700
+
+    # Current opponent is weak
+    current_is_weak = current_opponent_elo < weak_opp_threshold
+
+    # Next opponent is strong
+    next_is_strong = next_opponent_elo >= strong_next_threshold
+
+    return (team_is_ranked or team_is_elite) and current_is_weak and next_is_strong
+
+
+def calculate_situational_adjustment(letdown=False, revenge=False, trap=False,
+                                     travel_disadvantage=False, rest_edge=0,
+                                     home_team=True):
+    """
+    Calculate point adjustment based on situational factors.
+
+    Returns adjustment to add to spread prediction (positive favors home).
+
+    Research-based adjustments:
+    - Letdown: -2.5 to -3 points for the affected team
+    - Revenge: +1.5 to +2 points for the revengeful team
+    - Trap: -2 to -3 points for the trapped team
+    - Travel disadvantage: -1 to -2 points for traveling team
+    - Rest edge: ~0.3-0.5 points per day
+    """
+    adjustment = 0.0
+
+    if letdown:
+        # Team in letdown likely to underperform
+        if home_team:
+            adjustment -= 2.5  # Home team in letdown = reduce home advantage
+        else:
+            adjustment += 2.5  # Away team in letdown = increase home advantage
+
+    if revenge:
+        # Team with revenge motivation likely to overperform
+        if home_team:
+            adjustment += 1.5  # Home team with revenge
+        else:
+            adjustment -= 1.5  # Away team with revenge
+
+    if trap:
+        # Ranked/elite team likely to overlook opponent
+        if home_team:
+            adjustment -= 2.0  # Home team in trap
+        else:
+            adjustment += 2.0  # Away team in trap
+
+    if travel_disadvantage:
+        # West coast traveling east for early game
+        adjustment += 1.5  # Benefits home team
+
+    # Rest edge: ~0.4 points per day
+    adjustment += rest_edge * 0.4
+
+    return adjustment
+
 def calculate_rest_edge(home_rest_days, away_rest_days):
     """
     Calculate rest advantage.

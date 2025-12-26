@@ -4,6 +4,11 @@ Fetch College Football Injury Data from ESPN and Covers.com.
 This script fetches injury reports for CFB teams to incorporate
 into predictions. QB injuries are worth 5-10 points on the spread.
 
+V21 UPDATE: Added QB starter/backup status detection.
+- Starting QB out = -7 points adjustment
+- Backup QB starting = track QB quality tier
+- Integrated with prediction_core.py for automatic feature injection
+
 Sources:
 1. ESPN Site API (primary) - http://site.api.espn.com/apis/site/v2/sports/football/college-football/
 2. Covers.com Injury Reports (backup) - https://www.covers.com/sport/football/ncaaf/injuries
@@ -17,9 +22,14 @@ import pandas as pd
 import json
 import time
 import re
+import os
+import logging
 from datetime import datetime
 from pathlib import Path
 from bs4 import BeautifulSoup
+from typing import Dict, Optional, List, Tuple
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # ESPN API CONFIGURATION
@@ -32,6 +42,7 @@ ESPN_CORE_URL = "http://sports.core.api.espn.com/v2/sports/football/leagues/coll
 TEAM_ID_CACHE = {}
 
 # Injury impact estimates (in points)
+# V21: QB values refined based on research showing starter-backup gap
 INJURY_IMPACT = {
     'QB': {'out': -7, 'doubtful': -5, 'questionable': -2, 'probable': -0.5},
     'RB1': {'out': -2, 'doubtful': -1.5, 'questionable': -0.5, 'probable': 0},
@@ -43,6 +54,19 @@ INJURY_IMPACT = {
     'K': {'out': -0.5, 'doubtful': -0.25, 'questionable': 0, 'probable': 0},
     'DEFAULT': {'out': -0.25, 'doubtful': -0.1, 'questionable': 0, 'probable': 0},
 }
+
+# QB Status classifications for feature engineering
+QB_STATUS = {
+    'starter': 0,       # Starting QB playing - baseline
+    'unknown': 0,       # Can't determine status
+    'questionable': -2, # Starting QB questionable
+    'backup': -5,       # Backup QB starting (known)
+    'out': -7,          # Starting QB confirmed out
+}
+
+# Cache for team QB starters (updated weekly)
+# Format: {team_name: {'starter': 'Player Name', 'last_updated': datetime}}
+QB_STARTER_CACHE: Dict[str, dict] = {}
 
 # Status normalization
 STATUS_MAP = {
@@ -465,6 +489,225 @@ def generate_injury_features(home_team, away_team, injury_df=None):
         'away_qb_out': int(away_qb_out),
         'qb_advantage': int(away_qb_out) - int(home_qb_out),  # Positive = home has QB advantage
     }
+
+
+# =============================================================================
+# V21: ENHANCED QB AVAILABILITY TRACKING
+# =============================================================================
+
+def fetch_team_roster(team_name: str) -> List[Dict]:
+    """
+    Fetch team roster from ESPN to identify starters.
+
+    Returns list of players with position and depth info.
+    """
+    team_id = get_team_id(team_name)
+    if not team_id:
+        return []
+
+    url = f"{ESPN_BASE_URL}/teams/{team_id}/roster"
+
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            players = []
+
+            for group in data.get('athletes', []):
+                position_name = group.get('position', 'Unknown')
+                for athlete in group.get('items', []):
+                    players.append({
+                        'name': athlete.get('displayName', ''),
+                        'position': athlete.get('position', {}).get('abbreviation', ''),
+                        'jersey': athlete.get('jersey', ''),
+                        'team': team_name,
+                        'status': athlete.get('status', {}).get('name', 'Active'),
+                    })
+
+            return players
+    except Exception as e:
+        logger.warning(f"Error fetching roster for {team_name}: {e}")
+
+    return []
+
+
+def get_team_qb_status(team_name: str, injury_df: Optional[pd.DataFrame] = None) -> Dict:
+    """
+    Get detailed QB status for a team.
+
+    V21: Enhanced to track starter vs backup.
+
+    Returns:
+        {
+            'status': 'starter'|'backup'|'questionable'|'out'|'unknown',
+            'starter_name': str or None,
+            'starter_injured': bool,
+            'impact_adjustment': float (-7 to 0),
+            'confidence': 'high'|'medium'|'low'
+        }
+    """
+    result = {
+        'status': 'unknown',
+        'starter_name': None,
+        'starter_injured': False,
+        'impact_adjustment': 0.0,
+        'confidence': 'low'
+    }
+
+    # Get injury data if not provided
+    if injury_df is None:
+        try:
+            injury_df = fetch_all_injuries([team_name])
+        except Exception:
+            injury_df = pd.DataFrame()
+
+    if injury_df.empty:
+        result['status'] = 'starter'  # Assume starter playing if no injury data
+        result['confidence'] = 'medium'
+        return result
+
+    # Find QB injuries for this team
+    team_qb_injuries = injury_df[
+        (injury_df['team'].str.lower() == team_name.lower()) &
+        (injury_df['position_category'] == 'QB')
+    ]
+
+    if team_qb_injuries.empty:
+        # No QB on injury report = starter likely playing
+        result['status'] = 'starter'
+        result['confidence'] = 'high'
+        return result
+
+    # Check injury status of QBs on report
+    qb_statuses = team_qb_injuries['status_normalized'].tolist()
+    qb_names = team_qb_injuries['player'].tolist()
+
+    # Determine worst-case status
+    if 'out' in qb_statuses:
+        # A QB is out - could be starter or backup
+        out_qbs = team_qb_injuries[team_qb_injuries['status_normalized'] == 'out']
+        result['status'] = 'out'
+        result['starter_injured'] = True
+        result['starter_name'] = out_qbs.iloc[0]['player'] if len(out_qbs) > 0 else None
+        result['impact_adjustment'] = QB_STATUS['out']
+        result['confidence'] = 'high'
+    elif 'doubtful' in qb_statuses:
+        result['status'] = 'backup'  # Likely backup starting
+        result['starter_injured'] = True
+        result['impact_adjustment'] = QB_STATUS['backup']
+        result['confidence'] = 'medium'
+    elif 'questionable' in qb_statuses:
+        result['status'] = 'questionable'
+        result['impact_adjustment'] = QB_STATUS['questionable']
+        result['confidence'] = 'medium'
+    else:
+        # Probable or unknown - starter likely playing
+        result['status'] = 'starter'
+        result['confidence'] = 'medium'
+
+    return result
+
+
+def generate_qb_features(
+    home_team: str,
+    away_team: str,
+    injury_df: Optional[pd.DataFrame] = None
+) -> Dict[str, float]:
+    """
+    Generate QB-specific features for prediction model.
+
+    V21: New feature set specifically for QB availability.
+
+    Returns:
+        {
+            'home_qb_status': 0 (starter) to -7 (out),
+            'away_qb_status': 0 to -7,
+            'qb_advantage': home_status - away_status (positive = home has healthier QB),
+            'home_qb_uncertain': 1 if questionable, 0 otherwise,
+            'away_qb_uncertain': 1 if questionable, 0 otherwise,
+            'qb_uncertainty_diff': binary indicator of asymmetric uncertainty,
+        }
+    """
+    # Get QB status for each team
+    home_qb = get_team_qb_status(home_team, injury_df)
+    away_qb = get_team_qb_status(away_team, injury_df)
+
+    # Convert status to numeric impact
+    home_impact = home_qb['impact_adjustment']
+    away_impact = away_qb['impact_adjustment']
+
+    # Uncertainty flags (questionable status adds variance)
+    home_uncertain = 1 if home_qb['status'] == 'questionable' else 0
+    away_uncertain = 1 if away_qb['status'] == 'questionable' else 0
+
+    return {
+        'home_qb_status': home_impact,
+        'away_qb_status': away_impact,
+        'qb_advantage': -home_impact + away_impact,  # Positive = home has healthier QB
+        'home_qb_uncertain': home_uncertain,
+        'away_qb_uncertain': away_uncertain,
+        'qb_uncertainty_diff': abs(home_uncertain - away_uncertain),
+    }
+
+
+def get_all_qb_statuses(teams: Optional[List[str]] = None) -> Dict[str, Dict]:
+    """
+    Get QB status for multiple teams at once (batch operation).
+
+    Args:
+        teams: List of team names, or None for all FBS teams
+
+    Returns:
+        Dict mapping team name to QB status dict
+    """
+    if teams is None:
+        fetch_espn_teams()
+        teams = list(set(TEAM_ID_CACHE.keys()))
+
+    # Fetch all injuries at once
+    injury_df = fetch_all_injuries(teams)
+
+    qb_statuses = {}
+    for team in teams:
+        qb_statuses[team.lower()] = get_team_qb_status(team, injury_df)
+
+    return qb_statuses
+
+
+def save_qb_status_report(output_path: str = 'qb_status_report.json'):
+    """
+    Save current QB status report for all teams.
+
+    This can be run before game predictions to cache QB availability.
+    """
+    print("Generating QB status report...")
+    qb_statuses = get_all_qb_statuses()
+
+    # Filter to only teams with issues
+    issues = {
+        team: status for team, status in qb_statuses.items()
+        if status['status'] != 'starter' or status['starter_injured']
+    }
+
+    report = {
+        'generated_at': datetime.now().isoformat(),
+        'total_teams_checked': len(qb_statuses),
+        'teams_with_qb_issues': len(issues),
+        'issues': issues
+    }
+
+    with open(output_path, 'w') as f:
+        json.dump(report, f, indent=2)
+
+    print(f"Saved QB status report to {output_path}")
+    print(f"Teams with QB issues: {len(issues)}")
+
+    for team, status in sorted(issues.items(), key=lambda x: x[1]['impact_adjustment']):
+        impact = status['impact_adjustment']
+        if impact != 0:
+            print(f"  {team}: {status['status']} ({impact:+.1f} pts)")
+
+    return report
 
 
 # =============================================================================

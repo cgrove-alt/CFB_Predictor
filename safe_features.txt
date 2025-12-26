@@ -59,3 +59,7 @@ is_dome
 high_wind
 cold_game
 wind_pass_impact
+home_qb_status
+away_qb_status
+qb_advantage
+qb_uncertainty

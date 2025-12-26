@@ -583,7 +583,7 @@ async def get_predictions(
     if not lines_dict:
         raise HTTPException(status_code=404, detail="No betting lines available from either source")
 
-    # Generate predictions
+    # Generate predictions (with weather data if CFBD Pro tier available)
     try:
         predictions_data = generate_predictions(
             games=valid_games,
@@ -591,6 +591,7 @@ async def get_predictions(
             season=season,
             week=week,
             bankroll=bankroll,
+            season_type=season_type,  # Pass season_type for weather API
         )
     except Exception as e:
         logger.error(f"Prediction error: {e}")

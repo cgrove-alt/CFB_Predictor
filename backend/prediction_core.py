@@ -39,6 +39,7 @@ SHOW_PASS_RECOMMENDATIONS = True
 PREFERRED_BOOKS = ['DraftKings', 'FanDuel', 'BetMGM', 'Caesars', 'Bovada']
 
 # V19/V20 Feature set (58 features - includes weather)
+# V21 adds 4 QB availability features = 62 total
 V19_FEATURES = [
     'home_pregame_elo', 'away_pregame_elo', 'elo_diff',
     'home_last5_score_avg', 'away_last5_score_avg',
@@ -67,6 +68,8 @@ V19_FEATURES = [
     # V20: Weather features (from CFBD Patreon API)
     'wind_speed', 'temperature', 'is_dome', 'high_wind',
     'cold_game', 'wind_pass_impact',
+    # V21: QB availability features
+    'home_qb_status', 'away_qb_status', 'qb_advantage', 'qb_uncertainty',
 ]
 
 # Dome stadiums (weather doesn't affect these games)
@@ -364,11 +367,12 @@ def calculate_v19_features_for_game(
     wind_speed: float = 0,
     temperature: float = 65,
     venue: Optional[str] = None,
+    qb_features: Optional[Dict[str, float]] = None,
 ) -> np.ndarray:
     """
-    Calculate features for V19/V20 model (58 features including weather).
+    Calculate features for V19/V20/V21 model (62 features including weather + QB).
 
-    This is the EXACT same logic as app_v10.py calculate_v19_features_for_game.
+    V21 adds QB availability features for injury-aware predictions.
     """
 
     def get_team_recent_stats(team: str, is_home: bool) -> Dict[str, Any]:
@@ -578,6 +582,12 @@ def calculate_v19_features_for_game(
         high_wind,
         cold_game,
         wind_pass_impact,
+
+        # QB availability features (4) - V21
+        qb_features.get('home_qb_status', 0) if qb_features else 0,
+        qb_features.get('away_qb_status', 0) if qb_features else 0,
+        qb_features.get('qb_advantage', 0) if qb_features else 0,
+        qb_features.get('qb_uncertainty_diff', 0) if qb_features else 0,
     ]])
 
     return features
@@ -621,6 +631,44 @@ def fetch_lines(season: int, week: int, season_type: str = 'regular') -> List[Di
     except Exception as e:
         logger.error(f"Error fetching lines: {e}")
         return []
+
+
+def fetch_weather(season: int, week: int, season_type: str = 'regular') -> Dict[int, Dict]:
+    """
+    Fetch weather data from CFBD API (requires Patreon Pro tier).
+
+    Returns dict keyed by game_id with wind_speed and temperature.
+    """
+    weather_dict = {}
+
+    try:
+        if season_type == 'postseason':
+            url = f"{CFBD_BASE_URL}/games/weather?year={season}&seasonType={season_type}"
+        else:
+            url = f"{CFBD_BASE_URL}/games/weather?year={season}&week={week}"
+
+        resp = requests.get(url, headers=get_api_headers(), timeout=10)
+
+        if resp.status_code == 200:
+            data = resp.json()
+            for game in data:
+                game_id = game.get('id')
+                if game_id:
+                    weather_dict[game_id] = {
+                        'wind_speed': game.get('windSpeed', 0) or 0,
+                        'temperature': game.get('temperature', 65) or 65,
+                        'humidity': game.get('humidity'),
+                        'weather_condition': game.get('weatherCondition'),
+                    }
+            logger.info(f"Fetched weather for {len(weather_dict)} games")
+        elif resp.status_code == 403:
+            logger.warning("Weather API requires CFBD Patreon Pro tier - using defaults")
+        else:
+            logger.warning(f"CFBD weather fetch returned {resp.status_code}")
+    except Exception as e:
+        logger.warning(f"Error fetching weather: {e}")
+
+    return weather_dict
 
 
 def build_lines_dict(lines_data: List[Dict]) -> Dict[str, Dict]:
@@ -710,16 +758,50 @@ def generate_v19_predictions(
     history_df: pd.DataFrame,
     season: int,
     week: int,
-    bankroll: float
+    bankroll: float,
+    weather_dict: Optional[Dict[int, Dict]] = None,
+    injury_df: Optional[pd.DataFrame] = None
 ) -> pd.DataFrame:
     """
-    Generate predictions using V19 dual-target model.
+    Generate predictions using V19/V21 dual-target model.
 
-    This is the EXACT same logic as app_v10.py generate_v19_predictions.
+    V21 adds injury_df parameter for QB availability tracking.
+
+    Args:
+        games: List of game dicts from CFBD API
+        lines_dict: Dict of betting lines keyed by home team
+        model: V19DualTargetModel instance
+        history_df: Historical games DataFrame for feature calculation
+        season: Current season year
+        week: Current week number
+        bankroll: Bankroll for bet sizing
+        weather_dict: Optional dict of weather data keyed by game_id
+        injury_df: Optional DataFrame of injury data for QB tracking
 
     Returns DataFrame with predictions for each game.
     """
     predictions = []
+
+    # Initialize weather dict if not provided
+    if weather_dict is None:
+        weather_dict = {}
+
+    # V21: Helper to get QB features for a game
+    def get_qb_features_for_game(home: str, away: str) -> Optional[Dict[str, float]]:
+        """Get QB availability features if injury data available."""
+        if injury_df is None or injury_df.empty:
+            return None
+
+        try:
+            # Import here to avoid circular imports
+            import sys
+            from pathlib import Path
+            sys.path.insert(0, str(Path(__file__).parent.parent))
+            from fetch_injuries import generate_qb_features
+            return generate_qb_features(home, away, injury_df)
+        except Exception as e:
+            logger.warning(f"Could not generate QB features: {e}")
+            return None
 
     for game in games:
         try:
@@ -737,13 +819,21 @@ def generate_v19_predictions(
             # Get venue for dome detection
             venue = game.get('venue') or game.get('venue_name') or ''
 
-            # Calculate V19/V20 features (58 features including weather)
-            # Weather defaults: wind_speed=0, temperature=65 (neutral conditions)
-            # These can be enhanced with real weather data if available
+            # Get weather data for this game (from CFBD Pro tier if available)
+            game_id = game.get('id')
+            game_weather = weather_dict.get(game_id, {})
+            wind_speed = game_weather.get('wind_speed', 0)
+            temperature = game_weather.get('temperature', 65)
+
+            # V21: Get QB availability features
+            qb_features = get_qb_features_for_game(home, away)
+
+            # Calculate V19/V20/V21 features (62 features including weather + QB)
             features = calculate_v19_features_for_game(
                 home, away, history_df, season, week, vegas_spread,
                 spread_open=spread_open, line_movement=line_movement,
-                wind_speed=0, temperature=65, venue=venue
+                wind_speed=wind_speed, temperature=temperature, venue=venue,
+                qb_features=qb_features
             )
 
             # Get V19 prediction

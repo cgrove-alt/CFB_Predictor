@@ -69,6 +69,16 @@ V19_FEATURES = [
     'cold_game', 'wind_pass_impact',
 ]
 
+# Dome stadiums (weather doesn't affect these games)
+DOME_STADIUMS = [
+    'syracuse', 'georgia state', 'tulane', 'unlv',
+    'new mexico', 'louisiana tech', 'northern illinois',
+    # Bowl game dome venues
+    'ford field', 'lucas oil stadium', 'at&t stadium',
+    'mercedes-benz stadium', 'caesars superdome',
+    'allegiant stadium', 'nrg stadium', 'u.s. bank stadium',
+]
+
 logger = logging.getLogger(__name__)
 
 
@@ -350,10 +360,13 @@ def calculate_v19_features_for_game(
     week: int,
     vegas_spread: float,
     spread_open: Optional[float] = None,
-    line_movement: float = 0
+    line_movement: float = 0,
+    wind_speed: float = 0,
+    temperature: float = 65,
+    venue: Optional[str] = None,
 ) -> np.ndarray:
     """
-    Calculate features for V19 model (52 features).
+    Calculate features for V19/V20 model (58 features including weather).
 
     This is the EXACT same logic as app_v10.py calculate_v19_features_for_game.
     """
@@ -467,7 +480,26 @@ def calculate_v19_features_for_game(
     has_line_movement = 1 if (line_movement and abs(line_movement) > 0) else 0
     expected_total = home_stats['last5_score_avg'] + away_stats['last5_score_avg']
 
-    # Build V19 feature array (52 features)
+    # Weather features (V20)
+    # Check if game is in a dome stadium
+    home_lower = home.lower()
+    venue_lower = (venue or '').lower()
+    is_dome = 1 if (home_lower in DOME_STADIUMS or
+                    any(dome in venue_lower for dome in DOME_STADIUMS)) else 0
+
+    # Weather impact features (nullified for dome games)
+    if is_dome:
+        high_wind = 0
+        cold_game = 0
+        wind_pass_impact = 0.0
+    else:
+        high_wind = 1 if wind_speed >= 15 else 0
+        cold_game = 1 if temperature <= 40 else 0
+        # Wind impact on passing game
+        pass_advantage = abs(home_stats['comp_pass_ppa'] - away_stats['comp_pass_ppa'])
+        wind_pass_impact = wind_speed * pass_advantage / 10
+
+    # Build V19/V20 feature array (58 features)
     features = np.array([[
         # Core power ratings (3)
         home_stats['pregame_elo'],
@@ -538,6 +570,14 @@ def calculate_v19_features_for_game(
 
         # Expected total (1)
         expected_total,
+
+        # Weather features (6) - V20
+        wind_speed,
+        temperature,
+        is_dome,
+        high_wind,
+        cold_game,
+        wind_pass_impact,
     ]])
 
     return features
@@ -694,10 +734,16 @@ def generate_v19_predictions(
             line_movement = lines_dict[home]['line_movement']
             spread_open = lines_dict[home].get('spread_opening', vegas_spread)
 
-            # Calculate V19 features (52 features)
+            # Get venue for dome detection
+            venue = game.get('venue') or game.get('venue_name') or ''
+
+            # Calculate V19/V20 features (58 features including weather)
+            # Weather defaults: wind_speed=0, temperature=65 (neutral conditions)
+            # These can be enhanced with real weather data if available
             features = calculate_v19_features_for_game(
                 home, away, history_df, season, week, vegas_spread,
-                spread_open=spread_open, line_movement=line_movement
+                spread_open=spread_open, line_movement=line_movement,
+                wind_speed=0, temperature=65, venue=venue
             )
 
             # Get V19 prediction

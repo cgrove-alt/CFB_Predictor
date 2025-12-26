@@ -800,8 +800,10 @@ def generate_v19_predictions(
             # Show probability for the PICKED side, not always home
             if pick_side == 'HOME':
                 effective_prob = cover_prob
+                effective_edge = pred_spread_error  # Edge already favors home
             else:
                 effective_prob = 1 - cover_prob
+                effective_edge = -pred_spread_error  # Flip edge for away pick
 
             predictions.append({
                 'Home': home,
@@ -812,7 +814,7 @@ def generate_v19_predictions(
                 'opponent': opponent,
                 'spread_to_bet': spread_to_bet,
                 'vegas_spread': vegas_spread,
-                'spread_error': pred_spread_error,
+                'spread_error': effective_edge,  # Now from picked team's perspective
                 'predicted_margin': predicted_margin,
                 'win_prob': effective_prob,
                 'cover_probability': effective_prob,

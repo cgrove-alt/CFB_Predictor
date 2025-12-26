@@ -955,24 +955,39 @@ def generate_v19_predictions(
 # V22 META-ROUTER MODEL SUPPORT
 # =============================================================================
 
+# V22 Game Cluster definitions
+CLUSTER_STANDARD = 0      # Standard game - use base XGBoost
+CLUSTER_HIGH_VARIANCE = 1 # High variance/mismatch - use uncertainty-aware model
+CLUSTER_BLOWOUT = 2       # Blowout risk (margin > 24)
+
+
+def is_fcs_game(home: str, away: str) -> bool:
+    """Check if game involves an FCS team (auto-pass for V22)."""
+    return home in FCS_TEAMS or away in FCS_TEAMS
+
+
 class V22MetaRouterModel:
     """
     V22 Meta-Router Ensemble Model for prediction_core.
 
-    This is a lightweight wrapper that loads the trained V22 model
-    and provides prediction functionality.
+    Architecture:
+    - Cluster 0: Standard Game -> StandardXGBoostModel
+    - Cluster 1: High Variance -> HighVarianceModel (with NGBoost uncertainty)
+    - Cluster 2: Blowout Risk -> BlowoutClassifier (with 1.15x margin multiplier)
+
+    This wrapper loads the trained V22 model and provides prediction functionality.
     """
 
     def __init__(self):
         self.meta_router = None
-        self.elite_model = None
-        self.avgvsavg_model = None
-        self.mismatch_model = None
         self.standard_model = None
+        self.high_variance_model = None
+        self.blowout_model = None
         self.feature_names = None
         self.router_feature_names = None
         self.scaler = None
         self.metrics = {}
+        self.fcs_teams = set()  # Loaded from model file
 
     def predict(self, X, X_router=None, vegas_spread=None) -> List[Dict[str, Any]]:
         """
@@ -988,36 +1003,38 @@ class V22MetaRouterModel:
         # Scale features
         X_scaled = self.scaler.transform(X)
 
-        # Get routing weights (soft assignment)
-        routing_weights = self.meta_router.get_routing_weights(X_router)
-        game_types, confidences = self.meta_router.predict(X_router)
+        # Get cluster predictions and probabilities
+        cluster_ids, confidences = self.meta_router.predict(X_router)
+        cluster_probs = self.meta_router.get_cluster_probs(X_router)
 
         # Get predictions from all sub-models
-        margin_elite, cover_elite = self.elite_model.predict(X_scaled)
-        margin_avg, cover_avg, uncertainty_avg = self.avgvsavg_model.predict(X_scaled)
-        margin_mismatch, cover_mismatch, blowout_prob = self.mismatch_model.predict(X_scaled)
-        margin_standard, cover_standard = self.standard_model.predict(X_scaled)
+        margin_std, cover_std = self.standard_model.predict(X_scaled)
+        margin_hv, cover_hv, uncertainty = self.high_variance_model.predict(X_scaled)
+        margin_bo, cover_bo, blowout_prob = self.blowout_model.predict(X_scaled)
 
-        # Combine using routing weights
-        margins = np.stack([margin_elite, margin_avg, margin_mismatch, margin_standard], axis=1)
-        covers = np.stack([cover_elite, cover_avg, cover_mismatch, cover_standard], axis=1)
+        # Combine predictions using cluster probabilities (soft weighting)
+        margin_pred = (
+            cluster_probs[:, 0] * margin_std +
+            cluster_probs[:, 1] * margin_hv +
+            cluster_probs[:, 2] * margin_bo
+        )
 
-        margin_pred = np.sum(margins * routing_weights, axis=1)
-        cover_prob = np.sum(covers * routing_weights, axis=1)
-
-        # Uncertainty from AvgVsAvg model (NGBoost)
-        uncertainty = uncertainty_avg if uncertainty_avg is not None else np.full(len(X), 7.0)
+        cover_prob = (
+            cluster_probs[:, 0] * cover_std +
+            cluster_probs[:, 1] * cover_hv +
+            cluster_probs[:, 2] * cover_bo
+        )
 
         # Build results
         results = []
-        game_type_names = {0: 'Elite', 1: 'AvgVsAvg', 2: 'Mismatch', 3: 'Standard'}
+        cluster_names = {0: 'Standard', 1: 'High Variance', 2: 'Blowout'}
 
         for i in range(len(X_scaled)):
             margin = margin_pred[i]
             prob = cover_prob[i]
-            game_type = game_types[i]
+            cluster_id = cluster_ids[i]
             router_conf = confidences[i]
-            unc = uncertainty[i] if uncertainty is not None else 7.0
+            unc = uncertainty[i] if uncertainty is not None else 10.0
 
             # Get spread
             if vegas_spread is not None:
@@ -1049,8 +1066,8 @@ class V22MetaRouterModel:
             edge_abs = abs(edge)
             prob_confidence = abs(prob - 0.5)
 
-            # Quality penalty for AvgVsAvg games (where V21 struggled)
-            quality_penalty = -2 if game_type == 1 else 0
+            # Quality penalty for High Variance games
+            quality_penalty = -2 if cluster_id == CLUSTER_HIGH_VARIANCE else 0
 
             # BET only if strong confidence AND good edge
             if quality_penalty <= -2 and edge_abs < 6:
@@ -1070,7 +1087,7 @@ class V22MetaRouterModel:
                 'bet_recommendation': recommendation,
                 'pick_side': 'HOME' if bet_home else 'AWAY',
                 'game_quality_score': quality_penalty,
-                'game_type': game_type_names.get(game_type, 'Unknown'),
+                'game_type': cluster_names.get(cluster_id, 'Unknown'),
                 'router_confidence': router_conf,
                 'uncertainty': unc,
                 'blowout_prob': blowout_prob[i] if blowout_prob is not None else 0.0,
@@ -1086,14 +1103,14 @@ class V22MetaRouterModel:
         with open(f'{path_prefix}_v22_meta.pkl', 'rb') as f:
             data = pickle.load(f)
             model.meta_router = data['meta_router']
-            model.elite_model = data['elite_model']
-            model.avgvsavg_model = data['avgvsavg_model']
-            model.mismatch_model = data['mismatch_model']
             model.standard_model = data['standard_model']
+            model.high_variance_model = data['high_variance_model']
+            model.blowout_model = data['blowout_model']
             model.feature_names = data['feature_names']
             model.router_feature_names = data['router_feature_names']
             model.scaler = data['scaler']
             model.metrics = data.get('metrics', {})
+            model.fcs_teams = set(data.get('fcs_teams', []))
 
         return model
 
@@ -1111,39 +1128,39 @@ def load_v22_meta_model(model_path: str = 'cfb') -> V22MetaRouterModel:
     return V22MetaRouterModel.load(model_path)
 
 
-def classify_game_type_v22(home: str, away: str, elo_diff: float, spread: float,
-                           avg_elo: float) -> Dict[str, Any]:
+def classify_game_cluster_v22(home: str, away: str, spread: float,
+                               matchup_volatility: float) -> Dict[str, Any]:
     """
-    Classify game type for V22 meta-router.
+    Classify game cluster for V22 meta-router.
+
+    Clusters:
+    - 0: Standard Game
+    - 1: High Variance (close spread + high volatility)
+    - 2: Blowout Risk (large spread)
 
     Returns:
-        Dict with game type classification and features
+        Dict with game cluster classification and features
     """
-    is_fcs_game = home in FCS_TEAMS or away in FCS_TEAMS
-    elo_diff_abs = abs(elo_diff)
+    is_fcs = is_fcs_game(home, away)
     spread_abs = abs(spread)
 
     # Classification logic matching train_v22_meta.py
-    if avg_elo > 1550 and elo_diff_abs < 150 and spread_abs < 10:
-        game_type = 0  # Elite
-        game_type_name = 'Elite'
-    elif avg_elo < 1550 and elo_diff_abs < 100 and spread_abs < 7:
-        game_type = 1  # AvgVsAvg
-        game_type_name = 'AvgVsAvg'
-    elif spread_abs > 14 or is_fcs_game:
-        game_type = 2  # Mismatch
-        game_type_name = 'Mismatch'
+    if spread_abs > 24:
+        cluster = CLUSTER_BLOWOUT
+        cluster_name = 'Blowout'
+    elif spread_abs < 7 and matchup_volatility > 12:
+        cluster = CLUSTER_HIGH_VARIANCE
+        cluster_name = 'High Variance'
     else:
-        game_type = 3  # Standard
-        game_type_name = 'Standard'
+        cluster = CLUSTER_STANDARD
+        cluster_name = 'Standard'
 
     return {
-        'game_type': game_type,
-        'game_type_name': game_type_name,
-        'is_fcs_game': is_fcs_game,
-        'elo_diff_abs': elo_diff_abs,
-        'avg_elo': avg_elo,
-        'is_mismatch': spread_abs > 14,
+        'game_cluster': cluster,
+        'game_cluster_name': cluster_name,
+        'is_fcs_game': is_fcs,
+        'spread_abs': spread_abs,
+        'matchup_volatility': matchup_volatility,
     }
 
 
@@ -1159,6 +1176,9 @@ def generate_v22_predictions(
 ) -> pd.DataFrame:
     """
     Generate predictions using V22 meta-router model.
+
+    V22 AUTO-PASS: Games involving FCS teams are automatically marked as PASS
+    due to high prediction error rates (e.g., Samford MAE 24.0).
 
     Args:
         games: List of game dicts from CFBD API
@@ -1188,6 +1208,40 @@ def generate_v22_predictions(
             vegas_spread = lines_dict[home]['spread_current']
             line_movement = lines_dict[home]['line_movement']
             spread_open = lines_dict[home].get('spread_opening', vegas_spread)
+
+            # V22: AUTO-PASS for FCS games
+            if is_fcs_game(home, away):
+                logger.info(f"V22 AUTO-PASS: FCS game detected - {away} @ {home}")
+                predictions.append({
+                    'Home': home,
+                    'Away': away,
+                    'Game': f"{away} @ {home}",
+                    'Signal': 'PASS',
+                    'team_to_bet': None,
+                    'opponent': None,
+                    'spread_to_bet': vegas_spread,
+                    'vegas_spread': vegas_spread,
+                    'spread_error': 0,
+                    'predicted_margin': 0,
+                    'win_prob': 0.5,
+                    'cover_probability': 0.5,
+                    'bet_size': 0,
+                    'line_movement': line_movement,
+                    'confidence_tier': 'VERY LOW',
+                    'confidence_class': 'confidence-very-low',
+                    'confidence_emoji': '🚫',
+                    'bet_recommendation': 'PASS',
+                    'game_quality': -10,  # Maximum penalty for FCS
+                    'game_type': 'FCS (Auto-Pass)',
+                    'router_confidence': 0,
+                    'uncertainty': 25.0,  # Maximum uncertainty
+                    'blowout_prob': 0,
+                    'start_date': game.get('start_date') or game.get('startDate'),
+                    'completed': game.get('completed', False),
+                    'game_id': game.get('id'),
+                    'is_fcs_game': True,
+                })
+                continue
 
             venue = game.get('venue') or game.get('venue_name') or ''
 
@@ -1291,6 +1345,7 @@ def generate_v22_predictions(
                 'start_date': game.get('start_date') or game.get('startDate'),
                 'completed': game.get('completed', False),
                 'game_id': game.get('id'),
+                'is_fcs_game': False,
             })
         except Exception as e:
             logger.error(f"V22 error predicting {game.get('awayTeam', '?')} @ {game.get('homeTeam', '?')}: {e}")

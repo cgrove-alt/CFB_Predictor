@@ -494,50 +494,60 @@ class FeatureEngineer:
         These features measure how well a team's offensive style matches up against
         the opponent's defensive weaknesses, helping the Meta-Router identify
         games where style mismatch creates predictable outcomes.
+
+        Features added:
+        - pass_off_vs_pass_def: Home_Pass_PPA - Away_Pass_Def_PPA
+        - rush_off_vs_rush_def: Home_Rush_PPA - Away_Rush_Def_PPA
+        - style_mismatch_total: Combined style advantage
+        - style_balance: Pass-heavy vs balanced indicator
         """
-        # Pass offense vs pass defense mismatch
+        # Pass offense vs pass defense mismatch (V22 naming convention)
         # Positive = home team's pass offense outmatches away's pass defense
         if 'home_comp_pass_ppa' in df.columns and 'away_comp_def_ppa' in df.columns:
-            df['pass_off_vs_pass_def_mismatch'] = (
+            df['pass_off_vs_pass_def'] = (
                 df['home_comp_pass_ppa'] - df['away_comp_def_ppa']
             )
         elif 'home_off_pass_success' in df.columns and 'away_def_pass_success' in df.columns:
             # Fallback to success rates if PPA not available
-            df['pass_off_vs_pass_def_mismatch'] = (
+            df['pass_off_vs_pass_def'] = (
                 df['home_off_pass_success'] - df['away_def_pass_success']
             )
         else:
-            df['pass_off_vs_pass_def_mismatch'] = 0.0
+            df['pass_off_vs_pass_def'] = 0.0
 
-        # Rush offense vs rush defense mismatch
+        # Rush offense vs rush defense mismatch (V22 naming convention)
         # Positive = home team's rush offense outmatches away's rush defense
         if 'home_comp_rush_ppa' in df.columns and 'away_comp_def_ppa' in df.columns:
-            df['rush_off_vs_rush_def_mismatch'] = (
+            df['rush_off_vs_rush_def'] = (
                 df['home_comp_rush_ppa'] - df['away_comp_def_ppa']
             )
         elif 'home_off_rush_success' in df.columns and 'away_def_rush_success' in df.columns:
             # Fallback to success rates if PPA not available
-            df['rush_off_vs_rush_def_mismatch'] = (
+            df['rush_off_vs_rush_def'] = (
                 df['home_off_rush_success'] - df['away_def_rush_success']
             )
         else:
-            df['rush_off_vs_rush_def_mismatch'] = 0.0
+            df['rush_off_vs_rush_def'] = 0.0
+
+        # Keep old names for backward compatibility
+        df['pass_off_vs_pass_def_mismatch'] = df['pass_off_vs_pass_def']
+        df['rush_off_vs_rush_def_mismatch'] = df['rush_off_vs_rush_def']
 
         # Combined style mismatch (overall advantage)
         df['style_mismatch_total'] = (
-            df['pass_off_vs_pass_def_mismatch'] + df['rush_off_vs_rush_def_mismatch']
+            df['pass_off_vs_pass_def'] + df['rush_off_vs_rush_def']
         )
 
         # Style balance indicator (pass-heavy vs balanced)
         # High absolute value = one-dimensional offense
-        if df['pass_off_vs_pass_def_mismatch'].std() > 0:
+        if len(df) > 0 and df['pass_off_vs_pass_def'].std() > 0:
             df['style_balance'] = (
-                df['pass_off_vs_pass_def_mismatch'] - df['rush_off_vs_rush_def_mismatch']
+                df['pass_off_vs_pass_def'] - df['rush_off_vs_rush_def']
             ).abs()
         else:
             df['style_balance'] = 0.0
 
-        logger.debug(f"Added style matchup features. Mean pass mismatch: {df['pass_off_vs_pass_def_mismatch'].mean():.3f}")
+        logger.debug(f"Added style matchup features. Mean pass mismatch: {df['pass_off_vs_pass_def'].mean():.3f}")
         return df
 
     def _add_volatility_features(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -547,6 +557,12 @@ class FeatureEngineer:
         Teams with high scoring volatility (inconsistent performance) are harder
         to predict. This helps the Meta-Router route volatile matchups to
         specialized models or adjust uncertainty.
+
+        Features added:
+        - home_volatility: Std dev of home team's last 5 game scores
+        - away_volatility: Std dev of away team's last 5 game scores
+        - matchup_volatility: Average of home/away volatility (for meta-router)
+        - volatility_index: Combined scoring + defensive volatility
         """
         home_volatility = []
         away_volatility = []
@@ -586,7 +602,11 @@ class FeatureEngineer:
         df['home_def_volatility'] = home_def_volatility
         df['away_def_volatility'] = away_def_volatility
 
+        # Matchup volatility: Average of home/away volatility (V22 meta-router input)
+        df['matchup_volatility'] = (df['home_volatility'] + df['away_volatility']) / 2.0
+
         # Combined volatility index (higher = more unpredictable matchup)
+        # Includes both offensive and defensive volatility
         df['volatility_index'] = (
             df['home_volatility'] + df['away_volatility'] +
             df['home_def_volatility'] + df['away_def_volatility']
@@ -595,7 +615,7 @@ class FeatureEngineer:
         # Volatility differential (high away volatility = underdog unpredictable)
         df['volatility_diff'] = df['home_volatility'] - df['away_volatility']
 
-        logger.debug(f"Added volatility features. Mean volatility index: {df['volatility_index'].mean():.2f}")
+        logger.debug(f"Added volatility features. Mean matchup_volatility: {df['matchup_volatility'].mean():.2f}")
         return df
 
     def _add_fcs_flags(self, df: pd.DataFrame) -> pd.DataFrame:

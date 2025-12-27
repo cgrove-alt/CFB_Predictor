@@ -9,10 +9,21 @@ import { TabNavigation, TabType } from '@/components/TabNavigation'
 import { HeroSection } from '@/components/HeroSection'
 import { apiClient } from '@/lib/api'
 import { PredictionsResponse, Prediction, ResultsResponse } from '@/lib/types'
-import { ResultsTable } from '@/components/ResultsTable'
+import { ResultsTable, ResultsTableSkeleton } from '@/components/ResultsTable'
 import { ResultsSummary } from '@/components/ResultsSummary'
+import { SortControl, SortOption } from '@/components/SortControl'
+import { GameCardSkeletonGrid, HeroSkeleton, MetricsSkeleton } from '@/components/GameCardSkeleton'
 
 type FilterType = 'all' | 'bets' | 'leans' | 'actionable'
+
+// Confidence tier ranking for sorting
+const CONFIDENCE_RANK: Record<string, number> = {
+  'HIGH': 5,
+  'MEDIUM-HIGH': 4,
+  'MEDIUM': 3,
+  'LOW': 2,
+  'VERY LOW': 1,
+}
 
 // Calculate initial season type based on current date
 // This runs synchronously BEFORE render to avoid race conditions
@@ -68,7 +79,7 @@ export default function DashboardPage() {
 
   // Filter state
   const [filter, setFilter] = useState<FilterType>('all')
-  const [sortBy, setSortBy] = useState<'edge' | 'probability' | 'default'>('default')
+  const [sortBy, setSortBy] = useState<SortOption>('edge')
 
   // Check authentication
   useEffect(() => {
@@ -150,8 +161,18 @@ export default function DashboardPage() {
       case 'edge':
         filtered.sort((a, b) => Math.abs(b.predicted_edge) - Math.abs(a.predicted_edge))
         break
-      case 'probability':
-        filtered.sort((a, b) => b.cover_probability - a.cover_probability)
+      case 'confidence':
+        filtered.sort((a, b) =>
+          (CONFIDENCE_RANK[b.confidence_tier] || 0) - (CONFIDENCE_RANK[a.confidence_tier] || 0)
+        )
+        break
+      case 'time':
+        filtered.sort((a, b) => {
+          if (!a.start_date && !b.start_date) return 0
+          if (!a.start_date) return 1
+          if (!b.start_date) return -1
+          return new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+        })
         break
     }
 
@@ -211,29 +232,35 @@ export default function DashboardPage() {
           <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
 
-        {/* Session Summary Metrics - 5 columns */}
-        {predictions && metrics && activeTab === 'spreads' && (
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="bg-slate-800 rounded-lg p-4">
-              <p className="text-slate-400 text-sm">Total Games</p>
-              <p className="text-2xl font-bold text-white">{filteredPredictions.length}</p>
-            </div>
-            <div className="bg-slate-800 rounded-lg p-4">
-              <p className="text-slate-400 text-sm">Confident Picks</p>
-              <p className="text-2xl font-bold text-emerald-400">{metrics.confidentPicks}</p>
-            </div>
-            <div className="bg-slate-800 rounded-lg p-4">
-              <p className="text-slate-400 text-sm">Total Wagered</p>
-              <p className="text-2xl font-bold text-emerald-400">${metrics.totalWagered}</p>
-            </div>
-            <div className="bg-slate-800 rounded-lg p-4">
-              <p className="text-slate-400 text-sm">Avg Edge</p>
-              <p className="text-2xl font-bold text-amber-400">{metrics.avgEdge.toFixed(1)} pts</p>
-            </div>
-            <div className="bg-slate-800 rounded-lg p-4">
-              <p className="text-slate-400 text-sm">Best Edge</p>
-              <p className="text-2xl font-bold text-emerald-400">{metrics.bestEdge.toFixed(1)} pts</p>
-            </div>
+        {/* Session Summary Metrics */}
+        {activeTab === 'spreads' && (
+          <div className="mt-4">
+            {isLoading ? (
+              <MetricsSkeleton />
+            ) : predictions && metrics ? (
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <p className="text-slate-400 text-sm">Total Games</p>
+                  <p className="text-2xl font-bold text-white">{filteredPredictions.length}</p>
+                </div>
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <p className="text-slate-400 text-sm">Confident Picks</p>
+                  <p className="text-2xl font-bold text-emerald-400">{metrics.confidentPicks}</p>
+                </div>
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <p className="text-slate-400 text-sm">Total Wagered</p>
+                  <p className="text-2xl font-bold text-emerald-400">${metrics.totalWagered}</p>
+                </div>
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <p className="text-slate-400 text-sm">Avg Edge</p>
+                  <p className="text-2xl font-bold text-amber-400">{metrics.avgEdge.toFixed(1)} pts</p>
+                </div>
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <p className="text-slate-400 text-sm">Best Edge</p>
+                  <p className="text-2xl font-bold text-emerald-400">{metrics.bestEdge.toFixed(1)} pts</p>
+                </div>
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -256,27 +283,18 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-slate-400">Sort:</label>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                  className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-white text-sm"
-                >
-                  <option value="default">Default</option>
-                  <option value="edge">By Edge</option>
-                  <option value="probability">By Probability</option>
-                </select>
-              </div>
+            <div className="flex items-center gap-4 flex-wrap">
+              {/* Sort Control */}
+              <SortControl value={sortBy} onChange={setSortBy} />
 
+              {/* Bankroll Input */}
               <div className="flex items-center gap-2">
                 <label className="text-sm text-slate-400">Bankroll:</label>
                 <input
                   type="number"
                   value={bankroll}
                   onChange={(e) => setBankroll(Number(e.target.value))}
-                  className="w-24 bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-white text-sm"
+                  className="w-24 bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                 />
               </div>
             </div>
@@ -290,70 +308,69 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Loading State */}
-        {isLoading && (
-          <div className="mt-6 flex justify-center">
-            <div className="flex items-center gap-3 text-slate-400">
-              <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              Loading predictions...
-            </div>
-          </div>
-        )}
-
         {/* SPREADS TAB CONTENT */}
-        {activeTab === 'spreads' && !isLoading && !error && (
+        {activeTab === 'spreads' && (
           <>
-            {/* Hero Section - Top Picks */}
-            {topPicks.length > 0 && (
+            {/* Loading State with Skeletons */}
+            {isLoading && (
               <div className="mt-6">
-                <HeroSection predictions={topPicks} bankroll={bankroll} />
-              </div>
-            )}
-
-            {/* More Picks Section */}
-            {morePicks.length > 0 && (
-              <div className="mt-6">
-                {topPicks.length > 0 && (
-                  <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">
-                    More Picks ({morePicks.length})
-                  </h2>
-                )}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {morePicks.map((prediction, idx) => (
-                    <GameCard
-                      key={prediction.game_id || idx}
-                      prediction={prediction}
-                      bankroll={bankroll}
-                    />
-                  ))}
+                <HeroSkeleton />
+                <div className="mt-6">
+                  <div className="h-4 w-32 bg-slate-700 rounded animate-pulse mb-4" />
+                  <GameCardSkeletonGrid count={6} />
                 </div>
               </div>
             )}
 
-            {/* Empty State */}
-            {filteredPredictions.length === 0 && (
-              <div className="mt-6 text-center py-12">
-                <p className="text-slate-400">
-                  {predictions?.total_games === 0
-                    ? 'No games found for this week.'
-                    : 'No games match your current filter.'}
-                </p>
-              </div>
+            {/* Loaded Content */}
+            {!isLoading && !error && (
+              <>
+                {/* Hero Section - Top Picks */}
+                {topPicks.length > 0 && (
+                  <div className="mt-6">
+                    <HeroSection predictions={topPicks} bankroll={bankroll} />
+                  </div>
+                )}
+
+                {/* More Picks Section */}
+                {morePicks.length > 0 && (
+                  <div className="mt-6">
+                    {topPicks.length > 0 && (
+                      <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">
+                        More Picks ({morePicks.length})
+                      </h2>
+                    )}
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {morePicks.map((prediction, idx) => (
+                        <GameCard
+                          key={prediction.game_id || idx}
+                          prediction={prediction}
+                          bankroll={bankroll}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {filteredPredictions.length === 0 && (
+                  <div className="mt-6 text-center py-12">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800 mb-4">
+                      <svg className="w-8 h-8 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                      </svg>
+                    </div>
+                    <p className="text-slate-400 text-lg">
+                      {predictions?.total_games === 0
+                        ? 'No games found for this week.'
+                        : 'No games match your current filter.'}
+                    </p>
+                    <p className="text-slate-500 text-sm mt-2">
+                      Try changing your filters or selecting a different week.
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -361,7 +378,12 @@ export default function DashboardPage() {
         {/* TOTALS TAB CONTENT */}
         {activeTab === 'totals' && !isLoading && (
           <div className="mt-6 text-center py-12">
-            <p className="text-slate-400">Totals (O/U) predictions coming soon...</p>
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800 mb-4">
+              <svg className="w-8 h-8 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-slate-400 text-lg">Totals (O/U) predictions coming soon...</p>
             <p className="text-slate-500 text-sm mt-2">
               This feature requires a backend endpoint to be added.
             </p>
@@ -372,25 +394,19 @@ export default function DashboardPage() {
         {activeTab === 'results' && (
           <div className="mt-6">
             {resultsLoading ? (
-              <div className="flex justify-center py-12">
-                <div className="flex items-center gap-3 text-slate-400">
-                  <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Loading results...
+              <div className="space-y-6">
+                {/* Summary Skeleton */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-pulse">
+                  {Array.from({ length: 4 }).map((_, idx) => (
+                    <div key={idx} className="bg-slate-800 rounded-lg p-4">
+                      <div className="h-3 w-16 bg-slate-700 rounded mb-2" />
+                      <div className="h-8 w-12 bg-slate-700 rounded" />
+                    </div>
+                  ))}
+                </div>
+                {/* Table Skeleton */}
+                <div className="bg-slate-800 rounded-lg overflow-hidden">
+                  <ResultsTableSkeleton />
                 </div>
               </div>
             ) : results ? (
@@ -400,17 +416,25 @@ export default function DashboardPage() {
 
                 {/* Results Table */}
                 {results.results.length > 0 ? (
-                  <div className="mt-6 bg-slate-800 rounded-lg overflow-hidden">
+                  <div className="mt-6 bg-slate-800 rounded-lg overflow-hidden max-h-[600px] overflow-y-auto">
                     <ResultsTable results={results.results} />
                   </div>
                 ) : (
                   <div className="mt-6 text-center py-12">
-                    <p className="text-slate-400">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800 mb-4">
+                      <svg className="w-8 h-8 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+                      </svg>
+                    </div>
+                    <p className="text-slate-400 text-lg">
                       {results.status === 'no_games'
-                        ? 'No completed games yet for this week. Check back after games finish!'
+                        ? 'No completed games yet for this week.'
                         : results.status === 'no_lines'
                         ? 'No betting lines available for completed games.'
                         : 'No results to display.'}
+                    </p>
+                    <p className="text-slate-500 text-sm mt-2">
+                      Check back after games finish!
                     </p>
                   </div>
                 )}

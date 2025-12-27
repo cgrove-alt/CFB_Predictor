@@ -54,7 +54,7 @@ from prediction_core import (
 
     # Game classification
     classify_game_type_for_prediction,
-    classify_game_type_v22,  # V22: Game type classification
+    classify_game_cluster_v22,  # V22: Game type classification (renamed from classify_game_type_v22)
     get_confidence_tier,
 
     # Model loading

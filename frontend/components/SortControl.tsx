@@ -10,7 +10,7 @@ interface SortControlProps {
 const SORT_OPTIONS: { value: SortOption; label: string; icon: React.ReactNode }[] = [
   {
     value: 'edge',
-    label: 'Highest Edge',
+    label: 'Best Value',
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -19,7 +19,7 @@ const SORT_OPTIONS: { value: SortOption; label: string; icon: React.ReactNode }[
   },
   {
     value: 'confidence',
-    label: 'Highest Confidence',
+    label: 'Most Certain',
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -28,7 +28,7 @@ const SORT_OPTIONS: { value: SortOption; label: string; icon: React.ReactNode }[
   },
   {
     value: 'time',
-    label: 'Start Time',
+    label: 'Game Time',
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -79,9 +79,9 @@ export function SortDropdown({ value, onChange }: SortDropdownProps) {
         onChange={(e) => onChange(e.target.value as SortOption)}
         className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
       >
-        <option value="edge">Highest Edge</option>
-        <option value="confidence">Highest Confidence</option>
-        <option value="time">Start Time</option>
+        <option value="edge">Best Value</option>
+        <option value="confidence">Most Certain</option>
+        <option value="time">Game Time</option>
         <option value="default">Default</option>
       </select>
     </div>

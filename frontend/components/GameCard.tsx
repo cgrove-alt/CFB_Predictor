@@ -174,7 +174,8 @@ export function GameCard({ prediction }: GameCardProps) {
 
           {/* Confidence Bar */}
           <div className="flex items-center gap-2 flex-1 max-w-[140px]">
-            <span className="text-xs text-slate-500 uppercase tracking-wide whitespace-nowrap">Conf</span>
+            <span className="text-xs text-slate-500 uppercase tracking-wide whitespace-nowrap hidden sm:inline">Confidence</span>
+            <span className="text-xs text-slate-500 uppercase tracking-wide whitespace-nowrap sm:hidden">Conf</span>
             <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
               <div
                 className={`h-full ${getConfidenceBarColor()} transition-all duration-500`}
@@ -183,15 +184,15 @@ export function GameCard({ prediction }: GameCardProps) {
             </div>
           </div>
 
-          {/* Recommendation Badge */}
-          <span className={`text-xs font-semibold uppercase px-2 py-0.5 rounded ${
+          {/* Recommendation Badge - More Prominent */}
+          <span className={`text-xs font-bold uppercase px-2.5 py-1 rounded-md ${
             bet_recommendation === 'BET'
-              ? 'bg-emerald-500/20 text-emerald-400'
+              ? 'bg-emerald-500/30 text-emerald-300 ring-1 ring-emerald-500/50'
               : bet_recommendation === 'LEAN'
-              ? 'bg-blue-500/20 text-blue-400'
+              ? 'bg-blue-500/30 text-blue-300 ring-1 ring-blue-500/50'
               : 'bg-slate-600/50 text-slate-400'
           }`}>
-            {bet_recommendation}
+            {bet_recommendation === 'BET' ? '🎯 Strong' : bet_recommendation === 'LEAN' ? '📌 Look' : 'Pass'}
           </span>
         </div>
       </div>

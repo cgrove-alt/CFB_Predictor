@@ -69,8 +69,11 @@ function HeroCard({ prediction }: HeroCardProps) {
 
       {/* Main Bet Instruction - Large and Prominent */}
       <div className="mb-4">
+        <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">
+          {bet_recommendation === 'BET' ? '🎯 Strong Pick' : bet_recommendation === 'LEAN' ? '📌 Worth a Look' : 'Consider Passing'}
+        </p>
         <p className="text-2xl sm:text-3xl font-bold text-white">
-          {bet_recommendation}: {team_to_bet}{' '}
+          Bet {team_to_bet}{' '}
           <span className="text-emerald-400">
             {spread_to_bet > 0 ? '+' : ''}{spread_to_bet.toFixed(1)}
           </span>
@@ -78,12 +81,19 @@ function HeroCard({ prediction }: HeroCardProps) {
         <p className="text-slate-400 mt-1">
           vs {opponent}
         </p>
+        {/* Spread explainer for beginners */}
+        <p className="text-xs text-slate-500 mt-2">
+          {spread_to_bet > 0
+            ? `(${team_to_bet} can lose by up to ${Math.abs(spread_to_bet).toFixed(0)} pts and you still win)`
+            : `(${team_to_bet} must win by ${Math.abs(spread_to_bet).toFixed(0)}+ pts for you to win)`
+          }
+        </p>
       </div>
 
       {/* Edge and Stats */}
       <div className="border-t border-slate-700 pt-4">
         <p className="text-amber-400 text-sm mb-2 flex items-center">
-          Predicted edge: {predicted_edge >= 0 ? '+' : ''}{predicted_edge.toFixed(1)} pts vs Vegas
+          Our advantage: {predicted_edge >= 0 ? '+' : ''}{predicted_edge.toFixed(1)} pts vs Vegas
           <EdgeTooltip />
         </p>
 

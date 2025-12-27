@@ -233,21 +233,21 @@ export default function DashboardPage() {
             {isLoading ? (
               <MetricsSkeleton />
             ) : predictions && metrics ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-slate-800 rounded-lg p-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                <div className="bg-slate-800 rounded-lg p-3 sm:p-4">
                   <p className="text-slate-400 text-sm">Total Games</p>
                   <p className="text-xl sm:text-2xl font-bold text-white">{filteredPredictions.length}</p>
                 </div>
-                <div className="bg-slate-800 rounded-lg p-4">
-                  <p className="text-slate-400 text-sm">Confident Picks</p>
+                <div className="bg-slate-800 rounded-lg p-3 sm:p-4">
+                  <p className="text-slate-400 text-sm">Strong Picks</p>
                   <p className="text-xl sm:text-2xl font-bold text-emerald-400">{metrics.confidentPicks}</p>
                 </div>
-                <div className="bg-slate-800 rounded-lg p-4">
-                  <p className="text-slate-400 text-sm">Avg Edge</p>
+                <div className="bg-slate-800 rounded-lg p-3 sm:p-4">
+                  <p className="text-slate-400 text-sm">Avg Advantage</p>
                   <p className="text-xl sm:text-2xl font-bold text-amber-400">{metrics.avgEdge.toFixed(1)} pts</p>
                 </div>
-                <div className="bg-slate-800 rounded-lg p-4">
-                  <p className="text-slate-400 text-sm">Best Edge</p>
+                <div className="bg-slate-800 rounded-lg p-3 sm:p-4">
+                  <p className="text-slate-400 text-sm">Best Opportunity</p>
                   <p className="text-xl sm:text-2xl font-bold text-emerald-400">{metrics.bestEdge.toFixed(1)} pts</p>
                 </div>
               </div>
@@ -258,25 +258,60 @@ export default function DashboardPage() {
         {/* Filters and Controls */}
         {activeTab === 'spreads' && (
           <div className="mt-4 flex flex-wrap gap-4 items-center justify-between">
-            <div className="flex gap-2">
-              {(['all', 'actionable', 'bets', 'leans'] as FilterType[]).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`px-3 py-2 sm:py-1.5 rounded-lg text-sm transition-colors ${
-                    filter === f
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                  }`}
-                >
-                  {f === 'all' ? 'All Games' : f === 'actionable' ? 'BET + LEAN' : f.toUpperCase()}
-                </button>
-              ))}
+            <div className="flex flex-wrap gap-2">
+              {(['all', 'actionable', 'bets', 'leans'] as FilterType[]).map((f) => {
+                const labels: Record<FilterType, string> = {
+                  all: 'All Games',
+                  actionable: 'Recommended',
+                  bets: 'Strong Picks',
+                  leans: 'Worth a Look',
+                }
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={`px-3 py-2 sm:py-1.5 rounded-lg text-sm transition-colors ${
+                      filter === f
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                  >
+                    {labels[f]}
+                  </button>
+                )
+              })}
             </div>
 
             {/* Sort Control */}
             <SortControl value={sortBy} onChange={setSortBy} />
           </div>
+        )}
+
+        {/* Filter Indicator */}
+        {activeTab === 'spreads' && !isLoading && filteredPredictions.length > 0 && (
+          <p className="mt-2 text-xs text-slate-500">
+            Showing {filteredPredictions.length} {
+              filter === 'all' ? 'games' :
+              filter === 'actionable' ? 'recommended games' :
+              filter === 'bets' ? 'strong picks' :
+              'games worth a look'
+            }
+          </p>
+        )}
+
+        {/* Quick Guide - Collapsible */}
+        {activeTab === 'spreads' && !isLoading && (
+          <details className="mt-4 bg-slate-800/50 rounded-lg">
+            <summary className="px-4 py-2 text-sm text-slate-400 cursor-pointer hover:text-white">
+              📗 How to Read This (tap to expand)
+            </summary>
+            <div className="px-4 pb-3 text-xs text-slate-400 space-y-1">
+              <p>🟢 <span className="text-emerald-400 font-medium">Strong Pick</span> = High confidence, recommended bet</p>
+              <p>🔵 <span className="text-blue-400 font-medium">Worth a Look</span> = Moderate confidence, consider it</p>
+              <p>⚪ <span className="text-slate-400 font-medium">Pass</span> = Skip this game</p>
+              <p className="pt-1 border-t border-slate-700 mt-2">💡 <span className="text-amber-400">Advantage</span> = How much better our pick is vs Vegas odds (higher = better value)</p>
+            </div>
+          </details>
         )}
 
         {/* Error State */}

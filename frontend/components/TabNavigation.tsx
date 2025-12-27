@@ -10,8 +10,8 @@ interface TabNavigationProps {
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
   const tabs: { id: TabType; label: string; icon: string }[] = [
     { id: 'spreads', label: 'Spread Picks', icon: '🏈' },
-    { id: 'totals', label: 'Totals (O/U)', icon: '📊' },
-    { id: 'results', label: 'Results', icon: '📜' },
+    { id: 'totals', label: 'Over/Under', icon: '📊' },
+    { id: 'results', label: 'Past Results', icon: '📜' },
   ]
 
   return (

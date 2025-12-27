@@ -71,14 +71,12 @@ class ApiClient {
   async getPredictions(
     season: number,
     week: number,
-    seasonType: string = 'regular',
-    bankroll: number = 1000
+    seasonType: string = 'regular'
   ): Promise<PredictionsResponse> {
     const params = new URLSearchParams({
       season: season.toString(),
       week: week.toString(),
       season_type: seasonType,
-      bankroll: bankroll.toString(),
     });
     return this.fetch<PredictionsResponse>(`/api/predictions?${params}`);
   }
@@ -90,14 +88,12 @@ class ApiClient {
   async getResults(
     season: number,
     week: number,
-    seasonType: string = 'regular',
-    bankroll: number = 1000
+    seasonType: string = 'regular'
   ): Promise<ResultsResponse> {
     const params = new URLSearchParams({
       season: season.toString(),
       week: week.toString(),
       season_type: seasonType,
-      bankroll: bankroll.toString(),
     });
     return this.fetch<ResultsResponse>(`/api/results?${params}`);
   }

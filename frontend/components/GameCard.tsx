@@ -6,8 +6,6 @@ import { EdgeTooltip } from './InfoTooltip'
 
 interface GameCardProps {
   prediction: Prediction
-  bankroll: number
-  isHero?: boolean
 }
 
 // Confidence tier to percentage for progress bar
@@ -19,23 +17,18 @@ const CONFIDENCE_TO_PERCENT: Record<string, number> = {
   'VERY LOW': 15,
 }
 
-export function GameCard({ prediction, bankroll, isHero = false }: GameCardProps) {
+export function GameCard({ prediction }: GameCardProps) {
   const {
     home_team,
     away_team,
     team_to_bet,
     vegas_spread,
     predicted_edge,
-    cover_probability,
     bet_recommendation,
     confidence_tier,
-    bet_size,
-    kelly_fraction,
     start_date,
   } = prediction
 
-  const betAmount = Math.round(bet_size * bankroll)
-  const kellyUnits = (kelly_fraction * 100).toFixed(1)
   const confidencePercent = CONFIDENCE_TO_PERCENT[confidence_tier] || 50
 
   // Determine which side to highlight (home or away)
@@ -179,16 +172,8 @@ export function GameCard({ prediction, bankroll, isHero = false }: GameCardProps
             </span>
           </div>
 
-          {/* Kelly Units */}
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-slate-500 uppercase tracking-wide">Kelly</span>
-            <span className="text-sm font-bold text-slate-300 ml-1">
-              {bet_recommendation !== 'PASS' ? `${kellyUnits}u` : '-'}
-            </span>
-          </div>
-
           {/* Confidence Bar */}
-          <div className="flex items-center gap-2 flex-1 max-w-[120px]">
+          <div className="flex items-center gap-2 flex-1 max-w-[140px]">
             <span className="text-xs text-slate-500 uppercase tracking-wide whitespace-nowrap">Conf</span>
             <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
               <div
@@ -197,37 +182,18 @@ export function GameCard({ prediction, bankroll, isHero = false }: GameCardProps
               />
             </div>
           </div>
+
+          {/* Recommendation Badge */}
+          <span className={`text-xs font-semibold uppercase px-2 py-0.5 rounded ${
+            bet_recommendation === 'BET'
+              ? 'bg-emerald-500/20 text-emerald-400'
+              : bet_recommendation === 'LEAN'
+              ? 'bg-blue-500/20 text-blue-400'
+              : 'bg-slate-600/50 text-slate-400'
+          }`}>
+            {bet_recommendation}
+          </span>
         </div>
-
-        {/* Bet Amount Row (if applicable) */}
-        {bet_recommendation !== 'PASS' && betAmount > 0 && (
-          <div className="mt-2 pt-2 border-t border-slate-700/50 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className={`text-xs font-semibold uppercase px-2 py-0.5 rounded ${
-                bet_recommendation === 'BET'
-                  ? 'bg-emerald-500/20 text-emerald-400'
-                  : 'bg-blue-500/20 text-blue-400'
-              }`}>
-                {bet_recommendation}
-              </span>
-              <span className="text-xs text-slate-400">
-                {(cover_probability * 100).toFixed(0)}% win prob
-              </span>
-            </div>
-            <span className="text-lg font-bold text-emerald-400">
-              ${betAmount}
-            </span>
-          </div>
-        )}
-
-        {/* Pass indicator */}
-        {bet_recommendation === 'PASS' && (
-          <div className="mt-2 pt-2 border-t border-slate-700/50">
-            <span className="text-xs font-semibold uppercase px-2 py-0.5 rounded bg-slate-600/50 text-slate-400">
-              PASS
-            </span>
-          </div>
-        )}
       </div>
     </div>
   )

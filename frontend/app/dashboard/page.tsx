@@ -70,7 +70,6 @@ export default function DashboardPage() {
   const [season, setSeason] = useState(currentYear)
   const [week, setWeek] = useState(getInitialWeek)
   const [seasonType, setSeasonType] = useState(getInitialSeasonType)
-  const [bankroll, setBankroll] = useState(1000)
 
   // Data state
   const [predictions, setPredictions] = useState<PredictionsResponse | null>(null)
@@ -98,7 +97,7 @@ export default function DashboardPage() {
       setError(null)
 
       try {
-        const data = await apiClient.getPredictions(season, week, seasonType, bankroll)
+        const data = await apiClient.getPredictions(season, week, seasonType)
         setPredictions(data)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch predictions')
@@ -108,7 +107,7 @@ export default function DashboardPage() {
     }
 
     fetchPredictions()
-  }, [season, week, seasonType, bankroll])
+  }, [season, week, seasonType])
 
   // Fetch results when results tab is active
   useEffect(() => {
@@ -118,7 +117,7 @@ export default function DashboardPage() {
       setResultsLoading(true)
 
       try {
-        const data = await apiClient.getResults(season, week, seasonType, bankroll)
+        const data = await apiClient.getResults(season, week, seasonType)
         setResults(data)
       } catch (err) {
         console.error('Failed to fetch results:', err)
@@ -129,7 +128,7 @@ export default function DashboardPage() {
     }
 
     fetchResults()
-  }, [activeTab, season, week, seasonType, bankroll])
+  }, [activeTab, season, week, seasonType])
 
   const handleRefresh = () => {
     // Re-fetch by triggering useEffect
@@ -197,17 +196,13 @@ export default function DashboardPage() {
       (p) => p.confidence_tier === 'HIGH' || p.confidence_tier === 'MEDIUM-HIGH'
     ).length
 
-    const totalWagered = filteredPredictions
-      .filter((p) => p.bet_recommendation !== 'PASS')
-      .reduce((sum, p) => sum + Math.round(p.bet_size * bankroll), 0)
-
     const avgEdge =
       filteredPredictions.reduce((sum, p) => sum + Math.abs(p.predicted_edge), 0) /
       filteredPredictions.length
 
     const bestEdge = Math.max(...filteredPredictions.map((p) => Math.abs(p.predicted_edge)))
 
-    return { confidentPicks, totalWagered, avgEdge, bestEdge }
+    return { confidentPicks, avgEdge, bestEdge }
   }
 
   const metrics = calculateMetrics()
@@ -238,7 +233,7 @@ export default function DashboardPage() {
             {isLoading ? (
               <MetricsSkeleton />
             ) : predictions && metrics ? (
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-slate-800 rounded-lg p-4">
                   <p className="text-slate-400 text-sm">Total Games</p>
                   <p className="text-2xl font-bold text-white">{filteredPredictions.length}</p>
@@ -246,10 +241,6 @@ export default function DashboardPage() {
                 <div className="bg-slate-800 rounded-lg p-4">
                   <p className="text-slate-400 text-sm">Confident Picks</p>
                   <p className="text-2xl font-bold text-emerald-400">{metrics.confidentPicks}</p>
-                </div>
-                <div className="bg-slate-800 rounded-lg p-4">
-                  <p className="text-slate-400 text-sm">Total Wagered</p>
-                  <p className="text-2xl font-bold text-emerald-400">${metrics.totalWagered}</p>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-4">
                   <p className="text-slate-400 text-sm">Avg Edge</p>
@@ -283,21 +274,8 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            <div className="flex items-center gap-4 flex-wrap">
-              {/* Sort Control */}
-              <SortControl value={sortBy} onChange={setSortBy} />
-
-              {/* Bankroll Input */}
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-slate-400">Bankroll:</label>
-                <input
-                  type="number"
-                  value={bankroll}
-                  onChange={(e) => setBankroll(Number(e.target.value))}
-                  className="w-24 bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                />
-              </div>
-            </div>
+            {/* Sort Control */}
+            <SortControl value={sortBy} onChange={setSortBy} />
           </div>
         )}
 
@@ -328,7 +306,7 @@ export default function DashboardPage() {
                 {/* Hero Section - Top Picks */}
                 {topPicks.length > 0 && (
                   <div className="mt-6">
-                    <HeroSection predictions={topPicks} bankroll={bankroll} />
+                    <HeroSection predictions={topPicks} />
                   </div>
                 )}
 
@@ -345,7 +323,6 @@ export default function DashboardPage() {
                         <GameCard
                           key={prediction.game_id || idx}
                           prediction={prediction}
-                          bankroll={bankroll}
                         />
                       ))}
                     </div>

@@ -7,10 +7,9 @@ import { EdgeTooltip } from './InfoTooltip'
 
 interface HeroSectionProps {
   predictions: Prediction[]
-  bankroll: number
 }
 
-export function HeroSection({ predictions, bankroll }: HeroSectionProps) {
+export function HeroSection({ predictions }: HeroSectionProps) {
   if (predictions.length === 0) return null
 
   return (
@@ -28,7 +27,6 @@ export function HeroSection({ predictions, bankroll }: HeroSectionProps) {
           <HeroCard
             key={prediction.game_id || idx}
             prediction={prediction}
-            bankroll={bankroll}
           />
         ))}
       </div>
@@ -38,30 +36,22 @@ export function HeroSection({ predictions, bankroll }: HeroSectionProps) {
 
 interface HeroCardProps {
   prediction: Prediction
-  bankroll: number
 }
 
-function HeroCard({ prediction, bankroll }: HeroCardProps) {
+function HeroCard({ prediction }: HeroCardProps) {
   const {
-    home_team,
-    away_team,
     team_to_bet,
     opponent,
     spread_to_bet,
     vegas_spread,
     predicted_margin,
     predicted_edge,
-    cover_probability,
     bet_recommendation,
     confidence_tier,
-    bet_size,
-    kelly_fraction,
     line_movement,
     start_date,
     signal,
   } = prediction
-
-  const betAmount = Math.round(bet_size * bankroll)
 
   // Border color based on signal (BUY = green, FADE = red)
   const borderColor = signal === 'BUY' ? 'border-l-emerald-500' : 'border-l-red-500'
@@ -89,18 +79,6 @@ function HeroCard({ prediction, bankroll }: HeroCardProps) {
           vs {opponent}
         </p>
       </div>
-
-      {/* Bet Amount - Large Green Display */}
-      {bet_recommendation !== 'PASS' && betAmount > 0 && (
-        <div className="mb-4">
-          <p className="text-4xl font-bold text-emerald-400">
-            ${betAmount}
-          </p>
-          <p className="text-sm text-slate-400">
-            {(cover_probability * 100).toFixed(0)}% Est. Win Probability
-          </p>
-        </div>
-      )}
 
       {/* Edge and Stats */}
       <div className="border-t border-slate-700 pt-4">

@@ -52,26 +52,14 @@ export function GameCardSkeleton() {
             <div className="h-4 w-16 bg-slate-700 rounded ml-1" />
           </div>
 
-          {/* Kelly skeleton */}
-          <div className="flex items-center gap-1">
-            <div className="h-3 w-8 bg-slate-700 rounded" />
-            <div className="h-4 w-10 bg-slate-700 rounded ml-1" />
-          </div>
-
           {/* Confidence Bar skeleton */}
-          <div className="flex items-center gap-2 flex-1 max-w-[120px]">
+          <div className="flex items-center gap-2 flex-1 max-w-[140px]">
             <div className="h-3 w-8 bg-slate-700 rounded" />
             <div className="flex-1 h-2 bg-slate-700 rounded-full" />
           </div>
-        </div>
 
-        {/* Bet Amount Row skeleton */}
-        <div className="mt-2 pt-2 border-t border-slate-700/50 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-5 w-12 bg-slate-700 rounded" />
-            <div className="h-3 w-20 bg-slate-700 rounded" />
-          </div>
-          <div className="h-6 w-16 bg-slate-700 rounded" />
+          {/* Recommendation badge skeleton */}
+          <div className="h-5 w-12 bg-slate-700 rounded" />
         </div>
       </div>
     </div>
@@ -136,12 +124,6 @@ function HeroCardSkeleton() {
         <div className="h-4 w-24 bg-slate-700 rounded" />
       </div>
 
-      {/* Bet Amount skeleton */}
-      <div className="mb-4">
-        <div className="h-10 w-24 bg-slate-700 rounded mb-1" />
-        <div className="h-3 w-32 bg-slate-700 rounded" />
-      </div>
-
       {/* Edge and Stats skeleton */}
       <div className="border-t border-slate-700 pt-4">
         <div className="h-4 w-48 bg-slate-700 rounded mb-3" />
@@ -169,8 +151,8 @@ function HeroCardSkeleton() {
  */
 export function MetricsSkeleton() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 animate-pulse">
-      {Array.from({ length: 5 }).map((_, idx) => (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-pulse">
+      {Array.from({ length: 4 }).map((_, idx) => (
         <div key={idx} className="bg-slate-800 rounded-lg p-4">
           <div className="h-3 w-20 bg-slate-700 rounded mb-2" />
           <div className="h-7 w-16 bg-slate-700 rounded" />

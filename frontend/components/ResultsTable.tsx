@@ -39,9 +39,6 @@ export function ResultsTable({ results }: ResultsTableProps) {
             <th className="text-center py-3 px-4 text-slate-400 text-sm font-medium bg-slate-800">
               Confidence
             </th>
-            <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium bg-slate-800">
-              Bet Size
-            </th>
           </tr>
         </thead>
         <tbody>
@@ -106,17 +103,6 @@ export function ResultsTable({ results }: ResultsTableProps) {
               <td className="py-3 px-4 text-center">
                 <ConfidenceBadge tier={result.confidence_tier} />
               </td>
-              <td className="py-3 px-4 text-right">
-                {result.bet_recommendation !== 'PASS' && result.bet_size > 0 ? (
-                  <span className={`font-semibold ${
-                    result.result === 'WIN' ? 'text-emerald-400' : 'text-red-400'
-                  }`}>
-                    {result.result === 'WIN' ? '+' : '-'}${result.bet_size}
-                  </span>
-                ) : (
-                  <span className="text-slate-500">-</span>
-                )}
-              </td>
             </tr>
           ))}
         </tbody>
@@ -140,7 +126,6 @@ export function ResultsTableSkeleton() {
             <th className="text-center py-3 px-4"><div className="h-4 w-14 bg-slate-700 rounded mx-auto" /></th>
             <th className="text-right py-3 px-4"><div className="h-4 w-20 bg-slate-700 rounded ml-auto" /></th>
             <th className="text-center py-3 px-4"><div className="h-4 w-20 bg-slate-700 rounded mx-auto" /></th>
-            <th className="text-right py-3 px-4"><div className="h-4 w-16 bg-slate-700 rounded ml-auto" /></th>
           </tr>
         </thead>
         <tbody>
@@ -152,7 +137,6 @@ export function ResultsTableSkeleton() {
               <td className="py-3 px-4 text-center"><div className="h-6 w-14 bg-slate-700 rounded mx-auto" /></td>
               <td className="py-3 px-4 text-right"><div className="h-4 w-12 bg-slate-700 rounded ml-auto" /></td>
               <td className="py-3 px-4 text-center"><div className="h-5 w-20 bg-slate-700 rounded mx-auto" /></td>
-              <td className="py-3 px-4 text-right"><div className="h-4 w-12 bg-slate-700 rounded ml-auto" /></td>
             </tr>
           ))}
         </tbody>

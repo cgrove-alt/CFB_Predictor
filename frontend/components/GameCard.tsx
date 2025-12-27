@@ -124,7 +124,7 @@ export function GameCard({ prediction }: GameCardProps) {
           </div>
 
           {/* Betting Buttons Column */}
-          <div className="flex flex-col gap-2 w-28 flex-shrink-0">
+          <div className="flex flex-col gap-2 w-24 sm:w-28 flex-shrink-0">
             {/* Away Spread Button */}
             <button
               className={`relative flex items-center justify-center px-3 py-2.5 rounded-lg font-bold text-sm transition-all ${

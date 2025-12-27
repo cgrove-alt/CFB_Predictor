@@ -46,7 +46,7 @@ export function SortControl({ value, onChange }: SortControlProps) {
           <button
             key={option.value}
             onClick={() => onChange(option.value)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-md text-sm font-medium transition-all ${
               value === option.value
                 ? 'bg-emerald-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-slate-700'

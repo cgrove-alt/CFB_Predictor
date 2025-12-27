@@ -69,7 +69,7 @@ function HeroCard({ prediction }: HeroCardProps) {
 
       {/* Main Bet Instruction - Large and Prominent */}
       <div className="mb-4">
-        <p className="text-3xl font-bold text-white">
+        <p className="text-2xl sm:text-3xl font-bold text-white">
           {bet_recommendation}: {team_to_bet}{' '}
           <span className="text-emerald-400">
             {spread_to_bet > 0 ? '+' : ''}{spread_to_bet.toFixed(1)}
@@ -87,7 +87,7 @@ function HeroCard({ prediction }: HeroCardProps) {
           <EdgeTooltip />
         </p>
 
-        <div className="grid grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 text-sm">
           <div>
             <p className="text-slate-500 text-xs uppercase">Vegas</p>
             <p className="text-white font-medium">

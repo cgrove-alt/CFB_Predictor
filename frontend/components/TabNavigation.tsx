@@ -20,14 +20,14 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
-          className={`flex-1 px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
+          className={`flex-1 px-3 sm:px-4 py-3 rounded-md text-sm font-medium transition-all duration-200 ${
             activeTab === tab.id
               ? 'bg-slate-700 text-white shadow-sm'
               : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
           }`}
         >
-          <span className="mr-2">{tab.icon}</span>
-          {tab.label}
+          <span className="sm:mr-2">{tab.icon}</span>
+          <span className="hidden sm:inline">{tab.label}</span>
         </button>
       ))}
     </div>

@@ -236,19 +236,19 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-slate-800 rounded-lg p-4">
                   <p className="text-slate-400 text-sm">Total Games</p>
-                  <p className="text-2xl font-bold text-white">{filteredPredictions.length}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white">{filteredPredictions.length}</p>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-4">
                   <p className="text-slate-400 text-sm">Confident Picks</p>
-                  <p className="text-2xl font-bold text-emerald-400">{metrics.confidentPicks}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-emerald-400">{metrics.confidentPicks}</p>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-4">
                   <p className="text-slate-400 text-sm">Avg Edge</p>
-                  <p className="text-2xl font-bold text-amber-400">{metrics.avgEdge.toFixed(1)} pts</p>
+                  <p className="text-xl sm:text-2xl font-bold text-amber-400">{metrics.avgEdge.toFixed(1)} pts</p>
                 </div>
                 <div className="bg-slate-800 rounded-lg p-4">
                   <p className="text-slate-400 text-sm">Best Edge</p>
-                  <p className="text-2xl font-bold text-emerald-400">{metrics.bestEdge.toFixed(1)} pts</p>
+                  <p className="text-xl sm:text-2xl font-bold text-emerald-400">{metrics.bestEdge.toFixed(1)} pts</p>
                 </div>
               </div>
             ) : null}
@@ -263,7 +263,7 @@ export default function DashboardPage() {
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
-                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                  className={`px-3 py-2 sm:py-1.5 rounded-lg text-sm transition-colors ${
                     filter === f
                       ? 'bg-emerald-600 text-white'
                       : 'bg-slate-700 text-slate-300 hover:bg-slate-600'

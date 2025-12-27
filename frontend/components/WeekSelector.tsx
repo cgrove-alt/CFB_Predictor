@@ -25,10 +25,10 @@ export function WeekSelector({
   const weeks = seasonType === 'postseason' ? postseasonWeeks : regularWeeks
 
   return (
-    <div className="flex flex-wrap gap-4 items-center bg-slate-800 rounded-lg p-4">
+    <div className="flex flex-wrap gap-2 sm:gap-4 items-center bg-slate-800 rounded-lg p-3 sm:p-4">
       {/* Season */}
       <div className="flex items-center gap-2">
-        <label className="text-sm text-slate-400">Season:</label>
+        <label className="text-sm text-slate-400 hidden sm:inline">Season:</label>
         <select
           value={season}
           onChange={(e) => onSeasonChange(Number(e.target.value))}
@@ -44,11 +44,11 @@ export function WeekSelector({
 
       {/* Season Type */}
       <div className="flex items-center gap-2">
-        <label className="text-sm text-slate-400">Type:</label>
+        <label className="text-sm text-slate-400 hidden sm:inline">Type:</label>
         <div className="flex rounded-lg overflow-hidden">
           <button
             onClick={() => onSeasonTypeChange('regular')}
-            className={`px-3 py-1.5 text-sm transition-colors ${
+            className={`px-3 py-2 sm:py-1.5 text-sm transition-colors ${
               seasonType === 'regular'
                 ? 'bg-emerald-600 text-white'
                 : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
@@ -58,20 +58,21 @@ export function WeekSelector({
           </button>
           <button
             onClick={() => onSeasonTypeChange('postseason')}
-            className={`px-3 py-1.5 text-sm transition-colors ${
+            className={`px-3 py-2 sm:py-1.5 text-sm transition-colors ${
               seasonType === 'postseason'
                 ? 'bg-emerald-600 text-white'
                 : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
             }`}
           >
-            Postseason
+            <span className="hidden sm:inline">Postseason</span>
+            <span className="sm:hidden">Post</span>
           </button>
         </div>
       </div>
 
       {/* Week */}
       <div className="flex items-center gap-2">
-        <label className="text-sm text-slate-400">Week:</label>
+        <label className="text-sm text-slate-400 hidden sm:inline">Week:</label>
         <select
           value={week}
           onChange={(e) => onWeekChange(Number(e.target.value))}

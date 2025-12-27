@@ -26,10 +26,10 @@ export default function InfoTooltip({ content, className = '' }: InfoTooltipProp
 
       {/* Tooltip content */}
       {isOpen && (
-        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 p-3 bg-gray-800 border border-gray-600 rounded-lg shadow-xl text-sm text-gray-200">
+        <div className="absolute z-50 bottom-full left-0 sm:left-1/2 sm:-translate-x-1/2 mb-2 w-72 max-w-[calc(100vw-2rem)] p-3 bg-gray-800 border border-gray-600 rounded-lg shadow-xl text-sm text-gray-200">
           {content}
           {/* Arrow */}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-800" />
+          <div className="absolute top-full left-4 sm:left-1/2 sm:-translate-x-1/2 border-8 border-transparent border-t-gray-800" />
         </div>
       )}
     </div>

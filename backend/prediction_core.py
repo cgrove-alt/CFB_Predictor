@@ -956,6 +956,7 @@ def generate_v19_predictions(
 CLUSTER_STANDARD = 0      # Standard game - use base XGBoost
 CLUSTER_HIGH_VARIANCE = 1 # High variance/mismatch - use uncertainty-aware model
 CLUSTER_BLOWOUT = 2       # Blowout risk (margin > 24)
+CLUSTER_AVG_VS_AVG = 3    # Average vs Average (both Elo 1400-1600) - specialized model
 
 
 def is_fcs_game(home: str, away: str) -> bool:
@@ -983,12 +984,13 @@ def is_fcs_game(home: str, away: str) -> bool:
 
 class V22MetaRouterModel:
     """
-    V22 Meta-Router Ensemble Model for prediction_core.
+    V22.1 Meta-Router Ensemble Model for prediction_core.
 
     Architecture:
     - Cluster 0: Standard Game -> StandardXGBoostModel
     - Cluster 1: High Variance -> HighVarianceModel (with NGBoost uncertainty)
     - Cluster 2: Blowout Risk -> BlowoutClassifier (with 1.15x margin multiplier)
+    - Cluster 3: Avg vs Avg -> AvgVsAvgModel (with feature gating)
 
     This wrapper loads the trained V22 model and provides prediction functionality.
     """
@@ -998,6 +1000,7 @@ class V22MetaRouterModel:
         self.standard_model = None
         self.high_variance_model = None
         self.blowout_model = None
+        self.avg_vs_avg_model = None  # NEW: Cluster 3
         self.feature_names = None
         self.router_feature_names = None
         self.scaler = None
@@ -1022,27 +1025,48 @@ class V22MetaRouterModel:
         cluster_ids, confidences = self.meta_router.predict(X_router)
         cluster_probs = self.meta_router.get_cluster_probs(X_router)
 
-        # Get predictions from all sub-models
+        # Get predictions from all 4 sub-models
         margin_std, cover_std = self.standard_model.predict(X_scaled)
         margin_hv, cover_hv, uncertainty = self.high_variance_model.predict(X_scaled)
         margin_bo, cover_bo, blowout_prob = self.blowout_model.predict(X_scaled)
 
-        # Combine predictions using cluster probabilities (soft weighting)
-        margin_pred = (
-            cluster_probs[:, 0] * margin_std +
-            cluster_probs[:, 1] * margin_hv +
-            cluster_probs[:, 2] * margin_bo
-        )
+        # Get Avg-vs-Avg predictions if model is available
+        if self.avg_vs_avg_model is not None and hasattr(self.avg_vs_avg_model, 'predict'):
+            margin_avg, cover_avg = self.avg_vs_avg_model.predict(X_scaled)
+        else:
+            # Fallback to standard model predictions
+            margin_avg, cover_avg = margin_std, cover_std
 
-        cover_prob = (
-            cluster_probs[:, 0] * cover_std +
-            cluster_probs[:, 1] * cover_hv +
-            cluster_probs[:, 2] * cover_bo
-        )
+        # Combine predictions using cluster probabilities (soft weighting - 4 clusters)
+        if cluster_probs.shape[1] >= 4:
+            margin_pred = (
+                cluster_probs[:, 0] * margin_std +
+                cluster_probs[:, 1] * margin_hv +
+                cluster_probs[:, 2] * margin_bo +
+                cluster_probs[:, 3] * margin_avg
+            )
+            cover_prob = (
+                cluster_probs[:, 0] * cover_std +
+                cluster_probs[:, 1] * cover_hv +
+                cluster_probs[:, 2] * cover_bo +
+                cluster_probs[:, 3] * cover_avg
+            )
+        else:
+            # Fallback for 3-cluster models (legacy V22)
+            margin_pred = (
+                cluster_probs[:, 0] * margin_std +
+                cluster_probs[:, 1] * margin_hv +
+                cluster_probs[:, 2] * margin_bo
+            )
+            cover_prob = (
+                cluster_probs[:, 0] * cover_std +
+                cluster_probs[:, 1] * cover_hv +
+                cluster_probs[:, 2] * cover_bo
+            )
 
         # Build results
         results = []
-        cluster_names = {0: 'Standard', 1: 'High Variance', 2: 'Blowout'}
+        cluster_names = {0: 'Standard', 1: 'High Variance', 2: 'Blowout', 3: 'Avg vs Avg'}
 
         for i in range(len(X_scaled)):
             margin = margin_pred[i]
@@ -1121,6 +1145,8 @@ class V22MetaRouterModel:
             model.standard_model = data['standard_model']
             model.high_variance_model = data['high_variance_model']
             model.blowout_model = data['blowout_model']
+            # Load Avg-vs-Avg model if present (V22.1+), otherwise None
+            model.avg_vs_avg_model = data.get('avg_vs_avg_model', None)
             model.feature_names = data['feature_names']
             model.router_feature_names = data['router_feature_names']
             model.scaler = data['scaler']
@@ -1149,7 +1175,8 @@ def load_v22_meta_model(model_path: str = 'cfb') -> V22MetaRouterModel:
 
 
 def classify_game_cluster_v22(home: str, away: str, spread: float,
-                               matchup_volatility: float) -> Dict[str, Any]:
+                               matchup_volatility: float,
+                               home_elo: float = 1500, away_elo: float = 1500) -> Dict[str, Any]:
     """
     Classify game cluster for V22 meta-router.
 
@@ -1157,17 +1184,31 @@ def classify_game_cluster_v22(home: str, away: str, spread: float,
     - 0: Standard Game
     - 1: High Variance (close spread + high volatility)
     - 2: Blowout Risk (large spread)
+    - 3: Avg vs Avg (both Elo 1400-1600, elo_diff < 100)
 
     Returns:
         Dict with game cluster classification and features
     """
     is_fcs = is_fcs_game(home, away)
     spread_abs = abs(spread)
+    elo_diff = abs(home_elo - away_elo)
+
+    # Check for Avg-vs-Avg first (both teams Elo 1400-1600, minimal elo_diff)
+    is_avg_vs_avg = (
+        1400 <= home_elo <= 1600 and
+        1400 <= away_elo <= 1600 and
+        elo_diff < 100
+    )
 
     # Classification logic matching train_v22_meta.py
     if spread_abs > 24:
+        # Blowout overrides all
         cluster = CLUSTER_BLOWOUT
         cluster_name = 'Blowout'
+    elif is_avg_vs_avg:
+        # Avg-vs-Avg takes priority over high variance
+        cluster = CLUSTER_AVG_VS_AVG
+        cluster_name = 'Avg vs Avg'
     elif spread_abs < 7 and matchup_volatility > 12:
         cluster = CLUSTER_HIGH_VARIANCE
         cluster_name = 'High Variance'
@@ -1179,7 +1220,9 @@ def classify_game_cluster_v22(home: str, away: str, spread: float,
         'game_cluster': cluster,
         'game_cluster_name': cluster_name,
         'is_fcs_game': is_fcs,
+        'is_avg_vs_avg': is_avg_vs_avg,
         'spread_abs': spread_abs,
+        'elo_diff': elo_diff,
         'matchup_volatility': matchup_volatility,
     }
 

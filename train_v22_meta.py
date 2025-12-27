@@ -82,6 +82,7 @@ TOXIC_FEATURES = []  # Empty - scoring trends are safe for FBS-only data
 CLUSTER_STANDARD = 0      # Standard game - use base XGBoost
 CLUSTER_HIGH_VARIANCE = 1 # High variance/mismatch - use uncertainty-aware model
 CLUSTER_BLOWOUT = 2       # Blowout risk (margin > 24)
+CLUSTER_AVG_VS_AVG = 3    # Average vs Average (both Elo 1400-1600) - specialized model
 
 # V22 Base Features for sub-models
 V22_BASE_FEATURES = [
@@ -158,6 +159,16 @@ META_ROUTER_FEATURES = [
     'vegas_spread',               # Spread as indicator of expected game type
     'is_p4_vs_p4',                # Power 4 matchups (higher predictability)
     'is_p4_vs_g5',                # Talent gap indicator
+]
+
+# Features to GATE (exclude) for Avg-vs-Avg games - error amplifiers identified in analysis
+# These features cause 1.2-1.3x error amplification in evenly-matched games
+AVG_VS_AVG_GATED_FEATURES = [
+    'home_ats', 'away_ats', 'ats_diff',           # 1.27x error amplifier - unreliable for avg teams
+    'hfa_diff',                                    # 1.23x error amplifier - minimal impact between similar teams
+    'home_streak', 'away_streak', 'streak_diff',  # 1.22x error amplifier - less predictive for avg teams
+    'elo_vs_spread',                              # 48.9% of high-error games - noise source for close games
+    'dominant_home', 'dominant_away',             # Never true for average teams by definition
 ]
 
 
@@ -330,6 +341,7 @@ def create_game_clusters(df: pd.DataFrame) -> pd.DataFrame:
     - Cluster 0: Standard Game
     - Cluster 1: High Variance/Mismatch (close spreads + high volatility)
     - Cluster 2: Blowout Risk (actual margin > 24)
+    - Cluster 3: Average vs Average (both Elo 1400-1600, elo_diff < 100)
     """
     # Determine target column
     if 'Margin' in df.columns:
@@ -345,25 +357,41 @@ def create_game_clusters(df: pd.DataFrame) -> pd.DataFrame:
     spread_abs = df['vegas_spread'].abs() if 'vegas_spread' in df.columns else 0
     volatility = df['matchup_volatility'] if 'matchup_volatility' in df.columns else 10
 
+    # Get Elo columns
+    home_elo = df['home_pregame_elo'] if 'home_pregame_elo' in df.columns else 1500
+    away_elo = df['away_pregame_elo'] if 'away_pregame_elo' in df.columns else 1500
+    elo_diff = df['elo_diff'].abs() if 'elo_diff' in df.columns else abs(home_elo - away_elo)
+
     # Initialize all as Standard
     df['game_cluster'] = CLUSTER_STANDARD
 
-    # Cluster 2: Blowout Risk (margin > 24)
+    # Cluster 3: Average vs Average (HIGHEST PRIORITY after blowouts)
+    # Both teams Elo 1400-1600, minimal Elo differential
+    # This is the worst-performing segment (MAE 11.35, 55% direction accuracy)
+    avg_vs_avg_mask = (
+        (home_elo >= 1400) & (home_elo <= 1600) &
+        (away_elo >= 1400) & (away_elo <= 1600) &
+        (elo_diff < 100)
+    )
+    df.loc[avg_vs_avg_mask, 'game_cluster'] = CLUSTER_AVG_VS_AVG
+
+    # Cluster 2: Blowout Risk (margin > 24) - overrides Avg-vs-Avg if blowout occurred
     blowout_mask = margin_abs > 24
     df.loc[blowout_mask, 'game_cluster'] = CLUSTER_BLOWOUT
 
     # Cluster 1: High Variance/Mismatch
-    # Criteria: Close spread (<7) AND high volatility (>12) AND NOT already a blowout
+    # Criteria: Close spread (<7) AND high volatility (>12) AND NOT blowout AND NOT avg-vs-avg
     high_variance_mask = (
         (spread_abs < 7) &
         (volatility > 12) &
-        (~blowout_mask)
+        (~blowout_mask) &
+        (~avg_vs_avg_mask)
     )
     df.loc[high_variance_mask, 'game_cluster'] = CLUSTER_HIGH_VARIANCE
 
     # Log distribution
     cluster_counts = df['game_cluster'].value_counts().sort_index()
-    cluster_names = {0: 'Standard', 1: 'High Variance', 2: 'Blowout'}
+    cluster_names = {0: 'Standard', 1: 'High Variance', 2: 'Blowout', 3: 'Avg vs Avg'}
     logger.info("Game cluster distribution:")
     for c, count in cluster_counts.items():
         logger.info(f"  {cluster_names.get(c, c)}: {count} ({100*count/len(df):.1f}%)")
@@ -601,29 +629,47 @@ class BlowoutClassifier:
         self.cover_model = None
         self.calibrator = None
 
-    def train(self, X: np.ndarray, y_margin: np.ndarray, y_cover: np.ndarray, y_blowout: np.ndarray):
-        """Train blowout classifier and margin models."""
+    def train(self, X: np.ndarray, y_margin: np.ndarray, y_cover: np.ndarray, y_blowout: np.ndarray,
+              X_full: np.ndarray = None, y_blowout_full: np.ndarray = None):
+        """Train blowout classifier and margin models.
+
+        Note: Blowout classifier needs both classes to train properly.
+        If X_full and y_blowout_full are provided, use those for the classifier.
+        Otherwise, skip classifier training if only one class present.
+        """
         logger.info(f"Training BlowoutClassifier on {len(X)} samples")
 
-        # Calculate class weight
-        n_blowout = np.sum(y_blowout == 1)
-        n_not_blowout = np.sum(y_blowout == 0)
-        scale_pos_weight = max(0.1, n_not_blowout / n_blowout) if n_blowout > 0 else 1.0
+        # Use full data for classifier if provided, otherwise use passed data
+        X_clf = X_full if X_full is not None else X
+        y_clf = y_blowout_full if y_blowout_full is not None else y_blowout
 
-        # Blowout classifier
-        self.classifier = XGBClassifier(
-            n_estimators=150,
-            max_depth=4,
-            learning_rate=0.1,
-            scale_pos_weight=scale_pos_weight,
-            random_state=42,
-            verbosity=0
-        )
-        self.classifier.fit(X, y_blowout)
+        # Check if we have both classes
+        unique_classes = np.unique(y_clf)
+        if len(unique_classes) < 2:
+            logger.warning(f"Only one class in y_blowout ({unique_classes}), using dummy classifier")
+            # Create a dummy classifier that always predicts the single class
+            self.classifier = None
+            self._single_class = unique_classes[0]
+        else:
+            # Calculate class weight
+            n_blowout = np.sum(y_clf == 1)
+            n_not_blowout = np.sum(y_clf == 0)
+            scale_pos_weight = max(0.1, n_not_blowout / n_blowout) if n_blowout > 0 else 1.0
 
-        blowout_pred = self.classifier.predict(X)
-        blowout_acc = accuracy_score(y_blowout, blowout_pred)
-        logger.info(f"Blowout classifier accuracy: {blowout_acc:.3f}")
+            # Blowout classifier
+            self.classifier = XGBClassifier(
+                n_estimators=150,
+                max_depth=4,
+                learning_rate=0.1,
+                scale_pos_weight=scale_pos_weight,
+                random_state=42,
+                verbosity=0
+            )
+            self.classifier.fit(X_clf, y_clf)
+
+            blowout_pred = self.classifier.predict(X_clf)
+            blowout_acc = accuracy_score(y_clf, blowout_pred)
+            logger.info(f"Blowout classifier accuracy: {blowout_acc:.3f}")
 
         # Margin model
         self.margin_model = XGBRegressor(
@@ -661,8 +707,12 @@ class BlowoutClassifier:
         cover_prob_raw = self.cover_model.predict_proba(X)[:, 1]
         cover_prob = self.calibrator.transform(cover_prob_raw)
 
-        # Blowout probability
-        blowout_prob = self.classifier.predict_proba(X)[:, 1]
+        # Blowout probability (handle dummy classifier case)
+        if self.classifier is not None:
+            blowout_prob = self.classifier.predict_proba(X)[:, 1]
+        else:
+            # Dummy classifier - use single class probability
+            blowout_prob = np.full(len(X), float(getattr(self, '_single_class', 1)))
 
         # Apply 1.15x multiplier if blowout predicted with >60% confidence
         blowout_adjustment = np.where(blowout_prob > 0.6, 1.15, 1.0)
@@ -671,20 +721,98 @@ class BlowoutClassifier:
         return margin_adjusted, cover_prob, blowout_prob
 
 
+class AvgVsAvgModel:
+    """
+    Specialized model for Average vs Average games (Cluster 3).
+
+    These games have the worst baseline performance (MAE 11.35, 55% direction accuracy).
+    Key strategy: GATE error-amplifying features and use conservative hyperparameters.
+
+    Features gated: home_ats, hfa_diff, home_streak, elo_vs_spread, dominant_*
+    Prioritized: Style matchup features (pass_off_vs_pass_def, etc.)
+    """
+
+    def __init__(self):
+        self.margin_model = None
+        self.cover_model = None
+        self.calibrator = None
+        self.feature_mask = None
+        self.active_feature_names = None
+
+    def train(self, X: np.ndarray, y_margin: np.ndarray, y_cover: np.ndarray,
+              feature_names: list):
+        """Train Avg-vs-Avg model with feature gating."""
+        logger.info(f"Training AvgVsAvgModel on {len(X)} samples")
+
+        # Create feature mask - exclude error-amplifying features
+        self.feature_mask = np.array([
+            f not in AVG_VS_AVG_GATED_FEATURES for f in feature_names
+        ])
+        X_gated = X[:, self.feature_mask]
+
+        self.active_feature_names = [f for f, mask in zip(feature_names, self.feature_mask) if mask]
+        n_gated = (~self.feature_mask).sum()
+        logger.info(f"Gated {n_gated} error-amplifying features, using {len(self.active_feature_names)} features")
+
+        # XGBoost with conservative settings (high regularization to avoid overfitting to noise)
+        self.margin_model = XGBRegressor(
+            n_estimators=200,
+            max_depth=3,          # Shallower - reduce overfitting
+            learning_rate=0.02,   # Slower learning - more stable
+            subsample=0.6,
+            colsample_bytree=0.6,
+            reg_alpha=1.0,        # Higher L1 regularization
+            reg_lambda=3.0,       # Higher L2 regularization
+            random_state=42,
+            verbosity=0
+        )
+        self.margin_model.fit(X_gated, y_margin)
+
+        # Cover model with same conservative settings
+        self.cover_model = XGBClassifier(
+            n_estimators=200,
+            max_depth=3,
+            learning_rate=0.02,
+            subsample=0.6,
+            colsample_bytree=0.6,
+            reg_alpha=1.0,
+            reg_lambda=3.0,
+            random_state=42,
+            verbosity=0
+        )
+        self.cover_model.fit(X_gated, y_cover)
+
+        # Calibrate cover probabilities
+        cover_probs = self.cover_model.predict_proba(X_gated)[:, 1]
+        self.calibrator = IsotonicRegression(out_of_bounds='clip')
+        self.calibrator.fit(cover_probs, y_cover)
+
+        return self
+
+    def predict(self, X: np.ndarray) -> tuple:
+        """Predict with feature gating applied."""
+        X_gated = X[:, self.feature_mask]
+        margin = self.margin_model.predict(X_gated)
+        cover_prob_raw = self.cover_model.predict_proba(X_gated)[:, 1]
+        cover_prob = self.calibrator.transform(cover_prob_raw)
+        return margin, cover_prob
+
+
 # =============================================================================
 # V22 META-ROUTER ENSEMBLE MODEL
 # =============================================================================
 
 class V22MetaRouterModel:
     """
-    V22 Meta-Router Ensemble Model.
+    V22.1 Meta-Router Ensemble Model with Avg-vs-Avg specialization.
 
     Uses a gating network to classify games into clusters:
     - Cluster 0: Standard -> XGBoost
     - Cluster 1: High Variance -> Uncertainty-aware model
     - Cluster 2: Blowout Risk -> Blowout classifier with 1.15x multiplier
+    - Cluster 3: Avg vs Avg -> Specialized model with feature gating
 
-    Final prediction weighted by meta-router confidence.
+    Final prediction weighted by meta-router confidence (soft ensemble).
     """
 
     def __init__(self):
@@ -692,6 +820,7 @@ class V22MetaRouterModel:
         self.standard_model = StandardXGBoostModel()
         self.high_variance_model = HighVarianceModel()
         self.blowout_model = BlowoutClassifier()
+        self.avg_vs_avg_model = AvgVsAvgModel()  # NEW: Cluster 3
 
         self.feature_names = None
         self.router_feature_names = None
@@ -731,9 +860,16 @@ class V22MetaRouterModel:
         return X_base, X_router
 
     def train(self, df: pd.DataFrame, target_margin: str = 'Margin',
-              target_spread: str = 'vegas_spread'):
+              target_spread: str = 'vegas_spread', skip_internal_split: bool = False):
         """
         Train the V22 meta-router ensemble.
+
+        Args:
+            df: Training data DataFrame
+            target_margin: Name of margin column
+            target_spread: Name of spread column
+            skip_internal_split: If True, use all data for training (no train/test split).
+                                 Use this for walk-forward evaluation where external split is done.
         """
         logger.info("=" * 60)
         logger.info("Training V22 Meta-Router Ensemble Model")
@@ -770,11 +906,16 @@ class V22MetaRouterModel:
         # Scale base features
         X_base_scaled = self.scaler.fit_transform(X_base)
 
-        # Train-test split (time-based)
-        if 'season' in df.columns:
+        # Train-test split (time-based) or use all data
+        if skip_internal_split:
+            # Use all data for training (for walk-forward evaluation)
+            train_mask = np.ones(len(df), dtype=bool)
+            test_mask = np.zeros(len(df), dtype=bool)
+        elif 'season' in df.columns and len(df['season'].unique()) > 1:
             train_mask = df['season'] < df['season'].max()
             test_mask = df['season'] == df['season'].max()
         else:
+            # Single season or no season column - use 80/20 split
             n_train = int(0.8 * len(df))
             train_mask = np.arange(len(df)) < n_train
             test_mask = ~train_mask
@@ -827,6 +968,8 @@ class V22MetaRouterModel:
             self.high_variance_model.train(X_train, y_margin_train, y_cover_train)
 
         # Blowout model (Cluster 2)
+        # Note: Blowout classifier needs FULL data to distinguish blowouts from non-blowouts
+        # But margin/cover models are trained on blowout-specific data
         logger.info("\n--- Training Blowout Model (Cluster 2) ---")
         blowout_mask = y_cluster_train == CLUSTER_BLOWOUT
         if blowout_mask.sum() > 50:
@@ -834,15 +977,34 @@ class V22MetaRouterModel:
                 X_train[blowout_mask],
                 y_margin_train[blowout_mask],
                 y_cover_train[blowout_mask],
-                y_blowout_train[blowout_mask]
+                y_blowout_train[blowout_mask],
+                X_full=X_train,  # Full data for classifier
+                y_blowout_full=y_blowout_train  # Full labels for classifier
             )
         else:
             logger.warning(f"Not enough Blowout samples ({blowout_mask.sum()}), training on all data")
             self.blowout_model.train(X_train, y_margin_train, y_cover_train, y_blowout_train)
 
-        # 3. Evaluate on test set
-        logger.info("\n--- Evaluating on Test Set ---")
-        self._evaluate(X_test, X_router_test, y_margin_test, y_cover_test, y_cluster_test)
+        # Avg vs Avg model (Cluster 3) - NEW
+        logger.info("\n--- Training Avg vs Avg Model (Cluster 3) ---")
+        avg_mask = y_cluster_train == CLUSTER_AVG_VS_AVG
+        if avg_mask.sum() > 50:
+            self.avg_vs_avg_model.train(
+                X_train[avg_mask],
+                y_margin_train[avg_mask],
+                y_cover_train[avg_mask],
+                self.feature_names  # Pass feature names for gating
+            )
+        else:
+            logger.warning(f"Not enough Avg-vs-Avg samples ({avg_mask.sum()}), training on all data")
+            self.avg_vs_avg_model.train(X_train, y_margin_train, y_cover_train, self.feature_names)
+
+        # 3. Evaluate on test set (skip if no test data)
+        if len(X_test) > 0:
+            logger.info("\n--- Evaluating on Test Set ---")
+            self._evaluate(X_test, X_router_test, y_margin_test, y_cover_test, y_cluster_test)
+        else:
+            logger.info("\n--- Skipping evaluation (no test data) ---")
 
         return self
 
@@ -863,23 +1025,39 @@ class V22MetaRouterModel:
         cluster_ids, confidences = self.meta_router.predict(X_router)
         cluster_probs = self.meta_router.get_cluster_probs(X_router)
 
-        # Get predictions from all sub-models
+        # Get predictions from all 4 sub-models
         margin_std, cover_std = self.standard_model.predict(X_scaled)
         margin_hv, cover_hv, uncertainty = self.high_variance_model.predict(X_scaled)
         margin_bo, cover_bo, blowout_prob = self.blowout_model.predict(X_scaled)
+        margin_avg, cover_avg = self.avg_vs_avg_model.predict(X_scaled)  # Cluster 3
 
-        # Combine predictions using cluster probabilities (soft weighting)
-        margin_pred = (
-            cluster_probs[:, 0] * margin_std +
-            cluster_probs[:, 1] * margin_hv +
-            cluster_probs[:, 2] * margin_bo
-        )
-
-        cover_prob = (
-            cluster_probs[:, 0] * cover_std +
-            cluster_probs[:, 1] * cover_hv +
-            cluster_probs[:, 2] * cover_bo
-        )
+        # Combine predictions using cluster probabilities (soft weighting - 4 clusters)
+        # Handle case where cluster_probs might only have 3 columns initially
+        if cluster_probs.shape[1] >= 4:
+            margin_pred = (
+                cluster_probs[:, 0] * margin_std +
+                cluster_probs[:, 1] * margin_hv +
+                cluster_probs[:, 2] * margin_bo +
+                cluster_probs[:, 3] * margin_avg
+            )
+            cover_prob = (
+                cluster_probs[:, 0] * cover_std +
+                cluster_probs[:, 1] * cover_hv +
+                cluster_probs[:, 2] * cover_bo +
+                cluster_probs[:, 3] * cover_avg
+            )
+        else:
+            # Fallback for 3-cluster case
+            margin_pred = (
+                cluster_probs[:, 0] * margin_std +
+                cluster_probs[:, 1] * margin_hv +
+                cluster_probs[:, 2] * margin_bo
+            )
+            cover_prob = (
+                cluster_probs[:, 0] * cover_std +
+                cluster_probs[:, 1] * cover_hv +
+                cluster_probs[:, 2] * cover_bo
+            )
 
         return margin_pred, cover_prob, cluster_ids, confidences, uncertainty, blowout_prob
 
@@ -901,7 +1079,7 @@ class V22MetaRouterModel:
         self.metrics['overall'] = {'mae': mae, 'rmse': rmse, 'cover_acc': cover_acc}
 
         # Per-cluster metrics
-        cluster_names = {0: 'Standard', 1: 'High Variance', 2: 'Blowout'}
+        cluster_names = {0: 'Standard', 1: 'High Variance', 2: 'Blowout', 3: 'Avg vs Avg'}
         logger.info(f"\nPER-CLUSTER METRICS:")
 
         for cluster_id, name in cluster_names.items():
@@ -919,11 +1097,12 @@ class V22MetaRouterModel:
             'standard_model': self.standard_model,
             'high_variance_model': self.high_variance_model,
             'blowout_model': self.blowout_model,
+            'avg_vs_avg_model': self.avg_vs_avg_model,  # NEW: Cluster 3
             'feature_names': self.feature_names,
             'router_feature_names': self.router_feature_names,
             'scaler': self.scaler,
             'metrics': self.metrics,
-            'version': 'V22-FBS-Only',
+            'version': 'V22.1-FBS-Only-AvgVsAvg',  # Updated version
             'trained_at': datetime.now().isoformat(),
             'fbs_teams': list(FBS_TEAMS),  # Save FBS allowlist for inference filtering
         }
@@ -952,6 +1131,8 @@ class V22MetaRouterModel:
             model.standard_model = data['standard_model']
             model.high_variance_model = data['high_variance_model']
             model.blowout_model = data['blowout_model']
+            # Load Avg-vs-Avg model if present (V22.1+), otherwise create new
+            model.avg_vs_avg_model = data.get('avg_vs_avg_model', AvgVsAvgModel())
             model.feature_names = data['feature_names']
             model.router_feature_names = data['router_feature_names']
             model.scaler = data['scaler']
